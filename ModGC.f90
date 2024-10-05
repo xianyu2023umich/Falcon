@@ -10,14 +10,15 @@ Module ModGC
 
     subroutine ModGC_CommunicateGCLocal(Tree,MpiRank,rk_index)
         implicit none
-        type(OcTree),target             :: Tree
-        integer,intent(in)              :: MpiRank,rk_index
+        type(OcTree),target             ::  Tree
+        integer,intent(in)              ::  MpiRank,rk_index
 
-        integer                         :: iLocalBlock
-        integer                         :: iGC_Target,iGC
-        type(Block),pointer             :: Block1,BlockTarget
-        type(GC_target),pointer         :: GC_target1
-        real,pointer                    :: primitive(:,:,:,:)
+        integer                         ::  iLocalBlock
+        integer                         ::  iGC_Target,iGC
+        type(Block),pointer             ::  Block1,Block2
+        type(GC_target),pointer         ::  GC_target1
+        real,pointer                    ::  primitive_send(:,:,:,:),&
+                                            primitive_recv(:,:,:,:)
 
         real,allocatable :: primitive_GC(:,:)
 
@@ -40,25 +41,29 @@ Module ModGC
                     ! allocate primitive_GC
 
                     GC_target1=>Block1%GC_targets(iGC_Target)
-                    BlockTarget=>Tree%LocalBlocks(GC_target1%iBlock)
+                    Block2=>Tree%LocalBlocks(GC_target1%iBlock-Tree%iLeafNode_ranges(MpiRank,1)+1)
                     allocate(primitive_GC(Block1%nvar,GC_target1%nGC))
 
                     ! rk_index
 
                     select case(rk_index)
                     case(1) 
-                        primitive => Block1%primitive
+                        primitive_recv=>Block1%primitive
+                        primitive_send=>Block2%primitive
                     case(2)
-                        primitive => Block1%primitive_k2
+                        primitive_recv=>Block1%primitive_k2
+                        primitive_send=>Block2%primitive_k2
                     case(3)
-                        primitive => Block1%primitive_k3
+                        primitive_recv=>Block1%primitive_k3
+                        primitive_send=>Block2%primitive_k3
                     case(4)
-                        primitive => Block1%primitive_k4
+                        primitive_recv=>Block1%primitive_k4
+                        primitive_send=>Block2%primitive_k4
                     end select
 
                     ! interpolate the block to primitive_GC
 
-                    call ModMath_1D3D_interpolate_1D1D(primitive,Block1%nvar,&
+                    call ModMath_1D3D_interpolate_1D1D(primitive_send,Block1%nvar,&
                         Block1%ni,Block1%nj,Block1%nk,Block1%ng,&
                         Block1%xi,Block1%xj,Block1%xk,GC_target1%nGC,GC_target1%xijk_list,&
                         primitive_GC)
@@ -66,9 +71,9 @@ Module ModGC
                     ! give it to the current block
     
                     do iGC=1,GC_target1%nGC
-                        Block1%primitive(:, GC_target1%ijk_list(iGC,1),&
-                                            GC_target1%ijk_list(iGC,2),&
-                                            GC_target1%ijk_list(iGC,3))=primitive_GC(:,iGC)
+                        primitive_recv(:, GC_target1%ijk_list(iGC,1),&
+                                        GC_target1%ijk_list(iGC,2),&
+                                        GC_target1%ijk_list(iGC,3))=primitive_GC(:,iGC)
                     end do
 
                     deallocate(primitive_GC)
