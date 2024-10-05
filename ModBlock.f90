@@ -129,10 +129,6 @@ module ModBlock
 
         Block1%nGC_targets=0
         Block1%nGC_sources=0
-
-        do i=1-ng,ni+ng
-            Block1%primitive(1:nvar,i,-ng+1:nj+ng,-ng+1:nk+ng)=Block1%xi(i)
-        end do
         
         call random_number(Block1%primitive)
         Block1%primitive=(Block1%primitive-0.5)*0.00001
