@@ -163,6 +163,8 @@ Module ModOcTree
                 xijk_ranges(:,:,iLocalBlock),&
                 ni,nj,nk,ng,NameEqn,rk_order)
         end do
+
+        if (size(iLocalLeafNodes)/=8) print *,'!!!!!'
     end subroutine OcTree_SetAll
 
     ! get the blocks info ( the xijk_ranges, specifically)

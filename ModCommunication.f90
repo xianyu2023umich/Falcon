@@ -23,7 +23,7 @@ Module ModCommunication
 
         integer                 :: ierr
 
-        call MPI_Reduce(dt_local,dt_global,1,MPI_REAL,MPI_MAX,0,MPI_COMM_WORLD,ierr)
+        call MPI_AllReduce(dt_local,dt_global,1,MPI_REAL,MPI_MIN,MPI_COMM_WORLD,ierr)
     end subroutine ModCommunication_GlobalTimeStep
 
     subroutine ModCommunication_SendRecvGCAll(Tree,rk_index,MpiSize,MpiRank)

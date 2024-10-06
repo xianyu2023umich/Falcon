@@ -31,10 +31,11 @@ module ModAdvance
         
         logical                             ::  if_top,if_bottom            ! if block at top or bottom
         real                                ::  dt_local,dt                 ! dt
-        integer :: i,j,k
+        !integer :: i,j,k
 
         call ModTimeStep_Dynamo_HD(Tree,CFL_ad,CFL_df,dt_local)
         call ModCommunication_GlobalTimeStep(dt_local,dt)
+        !print *,MpiRank,dt
           
         ! see if all the local blocks in the tree
         ! have the same block size. If yes then it
@@ -42,7 +43,6 @@ module ModAdvance
         ! every time.
 
         if (if_all_same_sizes) then
-
 
             ! allocate the Runge-kutta R1 to R4 according to the Block1 size.
             !
@@ -80,38 +80,21 @@ module ModAdvance
                         primitive_i=>Block1%primitive_k4; primitive_i_1=>Block1%primitive
                         !EQN_update_Ri=>EQN_update_R4
                     end select
-                    
+
                     ! Get the EQN_update_Ri
                     !
                     call ModEquation_Dynamo_HD(primitive_i,Block1%ni,Block1%nj,Block1%nk,Block1%ng,&
                         Block1%dxi,Block1%dxj,Block1%dxk,Block1%xk,'cartesian',EQN_update_R1,if_top,if_bottom)
                     
-                    
                     ! Get the next RK
                     !
                     primitive_i_1(:,1:Block1%ni,1:Block1%nj,1:Block1%nk)=&
                         Block1%primitive(:,1:Block1%ni,1:Block1%nj,1:Block1%nk)+dt*EQN_update_R1/(5.0-rk_index)
-
-                    do i=1,Block1%ni
-                        do j=1,Block1%nj
-                            do k=1,Block1%nk
-                                if (ieee_is_nan(EQN_update_R1(2,i,j,k)) .or. &
-                                    ieee_is_nan(EQN_update_R1(3,i,j,k)) .or. &
-                                    ieee_is_nan(EQN_update_R1(4,i,j,k))) then
-                                    
-                                    print *,'start debugging'
-                                    print *,EQN_update_R1(:,i,j,k)
-                                    stop 1
-                                end if
-                            end do
-                        end do
-                    end do
-                    
                 end do
 
                 if (rk_index<4) call ModAdvance_CommunicateAll(Tree,rk_index+1,MpiSize,MpiRank)
-
             end do
+            
         else
             
 

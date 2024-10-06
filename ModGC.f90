@@ -63,9 +63,9 @@ Module ModGC
 
                     ! interpolate the block to primitive_GC
 
-                    call ModMath_1D3D_interpolate_1D1D(primitive_send,Block1%nvar,&
-                        Block1%ni,Block1%nj,Block1%nk,Block1%ng,&
-                        Block1%xi,Block1%xj,Block1%xk,GC_target1%nGC,GC_target1%xijk_list,&
+                    call ModMath_1D3D_interpolate_1D1D(primitive_send,Block2%nvar,&
+                        Block2%ni,Block2%nj,Block2%nk,Block2%ng,&
+                        Block2%xi,Block2%xj,Block2%xk,GC_target1%nGC,GC_target1%xijk_list,&
                         primitive_GC)
 
                     ! give it to the current block

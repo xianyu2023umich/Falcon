@@ -1,5 +1,5 @@
-MPIF90 = mpif90 -Wall -Wextra -g
-GFORTRAN = gfortran -Wall -Wextra -g
+MPIF90 = mpif90 -Wall -Wextra -g -O3
+GFORTRAN = gfortran -Wall -Wextra -g -O3
 
 
 MPIOBJ = ModCommunication.o ModAdvance.o ModSavePlot.o
