@@ -4,6 +4,13 @@ Module ModEquation
     use ModBlock
     use ModSSM_v0
     use ModDeviation
+    use ModDiffusion
+
+    ! which diffusion type
+    ! 1: original
+    ! 2: artificial diffusion in Rempel 2014
+
+    integer     ::  Diffusion_choice=2
 
     contains 
 
@@ -137,8 +144,6 @@ Module ModEquation
             
             do direction1=1,3
 
-                
-
                 ! first term: inertial force
                 
                 EQN_update_R(direction1+1,:,:,:)=-&
@@ -165,45 +170,63 @@ Module ModEquation
 
                 ! forth term: viscos force
 
-                do direction2=1,3
+                select case(Diffusion_choice)
+                case(1)
+                    do direction2=1,3
                     
-                    if (direction1==direction2) then
-                        EQN_update_R(direction1+1,:,:,:)=EQN_update_R(direction1+1,:,:,:)+1./(3.*ParaRe)*&
+                        if (direction1==direction2) then
+                            EQN_update_R(direction1+1,:,:,:)=EQN_update_R(direction1+1,:,:,:)+1./(3.*ParaRe)*&
+                                ModDeviation_2nd_O3(primitive(direction1+1,:,:,:),&
+                                ni,nj,nk,ng,dxi,dxj,dxk,direction1,geometry)
+                        else
+                            EQN_update_R(direction1+1,:,:,:)=EQN_update_R(direction1+1,:,:,:)+1./(3.*ParaRe)*&
+                                ModDeviation_2D_O4(primitive(direction1+1,:,:,:),&
+                                ni,nj,nk,ng,dxi,dxj,dxk,direction1,direction2,geometry)
+                        end if
+                        
+                        
+    
+                        EQN_update_R(direction1+1,:,:,:)=EQN_update_R(direction1+1,:,:,:)+1./ParaRe*&
                             ModDeviation_2nd_O3(primitive(direction1+1,:,:,:),&
-                            ni,nj,nk,ng,dxi,dxj,dxk,direction1,geometry)
-                    else
-                        EQN_update_R(direction1+1,:,:,:)=EQN_update_R(direction1+1,:,:,:)+1./(3.*ParaRe)*&
-                            ModDeviation_2D_O4(primitive(direction1+1,:,:,:),&
-                            ni,nj,nk,ng,dxi,dxj,dxk,direction1,direction2,geometry)
+                            ni,nj,nk,ng,dxi,dxj,dxk,direction2,geometry)
+    
+                        if (direction2==3) then
+                            EQN_update_R(direction1+1,:,:,:)=EQN_update_R(direction1+1,:,:,:)+&
+                                1./(rho0(1:ni,1:nj,1:nk)*ParaRe)*&
+                                ModDeviation_1st_O4(rho0,ni,nj,nk,ng,dxi,dxj,dxk,direction2,geometry)*&
+                                (shear(direction1,direction2,:,:,:)+shear(direction2,direction1,:,:,:))
+                        end if
+                        
+                    end do
+    
+                    if (direction1==3) then
+                        EQN_update_R(direction1+1,:,:,:)=EQN_update_R(direction1+1,:,:,:)-&
+                            2./(3.*rho0(1:ni,1:nj,1:nk)*ParaRe)*divergence_v*&
+                            ModDeviation_1st_O4(rho0,ni,nj,nk,ng,dxi,dxj,dxk,direction1,geometry)
                     end if
-                    
-                    
+    
+                    ! viscous term ends
 
-                    EQN_update_R(direction1+1,:,:,:)=EQN_update_R(direction1+1,:,:,:)+1./ParaRe*&
-                        ModDeviation_2nd_O3(primitive(direction1+1,:,:,:),&
-                        ni,nj,nk,ng,dxi,dxj,dxk,direction2,geometry)
+                    ! viscous heating
 
-                    if (direction2==3) then
-                        EQN_update_R(direction1+1,:,:,:)=EQN_update_R(direction1+1,:,:,:)+&
-                            1./(rho0(1:ni,1:nj,1:nk)*ParaRe)*&
-                            ModDeviation_1st_O4(rho0,ni,nj,nk,ng,dxi,dxj,dxk,direction2,geometry)*&
-                            (shear(direction1,direction2,:,:,:)+shear(direction2,direction1,:,:,:))
-                    end if
-                    
-                end do
+                    do direction1=1,3
+                        do direction2=1,3
+                            EQN_update_R(5,:,:,:)=EQN_update_R(5,:,:,:)+1./(paraRe*paraGamma)*(paraGamma-1)*&
+                                rho0(1:ni,1:nj,1:nk)/p0(1:ni,1:nj,1:nk)*&
+                                shear(direction1,direction2,:,:,:)*&
+                                (shear(direction1,direction2,:,:,:)+shear(direction2,direction1,:,:,:))
+                        end do
+                    end do
 
-                if (direction1==3) then
-                    EQN_update_R(direction1+1,:,:,:)=EQN_update_R(direction1+1,:,:,:)-&
-                        2./(3.*rho0(1:ni,1:nj,1:nk)*ParaRe)*divergence_v*&
-                        ModDeviation_1st_O4(rho0,ni,nj,nk,ng,dxi,dxj,dxk,direction1,geometry)
-                end if
-
-                ! viscous term ends
+                    EQN_update_R(5,:,:,:)=EQN_update_R(5,:,:,:)-2./(3.*paraRe*paraGamma)*(paraGamma-1)*&
+                        rho0(1:ni,1:nj,1:nk)/p0(1:ni,1:nj,1:nk)*divergence_v**2
+                case(2)
+                    call ModDiffusion_Aritificial_1(primitive,ni,nj,nk,ng,dxi,dxj,dxk,geometry,EQN_update_R,&
+                        p0,rho0,2)
+                end select
             end do
-
             
-            
-            ! boundary. only affect p1
+            ! boundary. Used to set p1 (and only affect p1)
 
             if (if_top) then
                 do k=nk+1,nk+ng
@@ -249,23 +272,6 @@ Module ModEquation
             EQN_update_R(5,:,:,:)=EQN_update_R(5,:,:,:)+1./paraRe/paraPr*&
                 ModDeviation_2nd_O3(rho0*te0*primitive(5,:,:,:),ni,nj,nk,ng,dxi,dxj,dxk,3,geometry)/&
                 (te0(1:ni,1:nj,1:nk)*rho0(1:ni,1:nj,1:nk))
-
-            ! viscous heating
-            
-            
-
-            do direction1=1,3
-                do direction2=1,3
-                    EQN_update_R(5,:,:,:)=EQN_update_R(5,:,:,:)+1./(paraRe*paraGamma)*(paraGamma-1)*&
-                        rho0(1:ni,1:nj,1:nk)/p0(1:ni,1:nj,1:nk)*&
-                        shear(direction1,direction2,:,:,:)*&
-                        (shear(direction1,direction2,:,:,:)+shear(direction2,direction1,:,:,:))
-                end do
-            end do
-
-            EQN_update_R(5,:,:,:)=EQN_update_R(5,:,:,:)-2./(3.*paraRe*paraGamma)*(paraGamma-1)*&
-                rho0(1:ni,1:nj,1:nk)/p0(1:ni,1:nj,1:nk)*divergence_v**2
-            
         end select
         
     end subroutine ModEquation_Dynamo_HD
