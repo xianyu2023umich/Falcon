@@ -10,7 +10,7 @@ Module ModEquation
     ! 1: original
     ! 2: artificial diffusion in Rempel 2014
 
-    integer     ::  Diffusion_choice=1
+    integer     ::  Diffusion_choice=2
 
     contains 
 
