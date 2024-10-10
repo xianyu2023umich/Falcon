@@ -10,7 +10,7 @@ Module ModEquation
     ! 1: original
     ! 2: artificial diffusion in Rempel 2014
 
-    integer     ::  Diffusion_choice=2
+    integer     ::  Diffusion_choice=1
 
     contains 
 
@@ -170,8 +170,7 @@ Module ModEquation
 
                 ! forth term: viscos force
 
-                select case(Diffusion_choice)
-                case(1)
+                if (Diffusion_choice==1) then
                     do direction2=1,3
                     
                         if (direction1==direction2) then
@@ -204,12 +203,7 @@ Module ModEquation
                             2./(3.*rho0(1:ni,1:nj,1:nk)*ParaRe)*divergence_v*&
                             ModDeviation_1st_O4(rho0,ni,nj,nk,ng,dxi,dxj,dxk,direction1,geometry)
                     end if
-    
-                    ! viscous term ends
-                case(2)
-                    call ModDiffusion_Aritificial_1(primitive,ni,nj,nk,ng,dxi,dxj,dxk,geometry,EQN_update_R,&
-                        p0,rho0,2)
-                end select
+                end if
             end do
             
             ! boundary. Used to set p1 (and only affect p1)
@@ -274,6 +268,12 @@ Module ModEquation
                 EQN_update_R(5,:,:,:)=EQN_update_R(5,:,:,:)-2./(3.*paraRe*paraGamma)*(paraGamma-1)*&
                     rho0(1:ni,1:nj,1:nk)/p0(1:ni,1:nj,1:nk)*divergence_v**2
             end if
+
+            if (Diffusion_choice==2) then
+                call ModDiffusion_Aritificial_1(primitive,ni,nj,nk,ng,dxi,dxj,dxk,geometry,EQN_update_R,&
+                        p0,rho0,2)
+            end if
+            
         end select
         
     end subroutine ModEquation_Dynamo_HD
