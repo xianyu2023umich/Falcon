@@ -39,9 +39,6 @@ module ModDiffusion
                 ! use minmod to find \Delta u
                 call ModLinReconstruct_minmod(5,ni,nj,nk,ng,direction1,primitive,d_primitive)
 
-                ! deallocate
-                deallocate(flux)
-
                 ! get phi & flux
                 select case(direction1)
                 case(1)
