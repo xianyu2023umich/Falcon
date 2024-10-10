@@ -206,20 +206,6 @@ Module ModEquation
                     end if
     
                     ! viscous term ends
-
-                    ! viscous heating
-
-                    do direction1=1,3
-                        do direction2=1,3
-                            EQN_update_R(5,:,:,:)=EQN_update_R(5,:,:,:)+1./(paraRe*paraGamma)*(paraGamma-1)*&
-                                rho0(1:ni,1:nj,1:nk)/p0(1:ni,1:nj,1:nk)*&
-                                shear(direction1,direction2,:,:,:)*&
-                                (shear(direction1,direction2,:,:,:)+shear(direction2,direction1,:,:,:))
-                        end do
-                    end do
-
-                    EQN_update_R(5,:,:,:)=EQN_update_R(5,:,:,:)-2./(3.*paraRe*paraGamma)*(paraGamma-1)*&
-                        rho0(1:ni,1:nj,1:nk)/p0(1:ni,1:nj,1:nk)*divergence_v**2
                 case(2)
                     call ModDiffusion_Aritificial_1(primitive,ni,nj,nk,ng,dxi,dxj,dxk,geometry,EQN_update_R,&
                         p0,rho0,2)
@@ -272,6 +258,22 @@ Module ModEquation
             EQN_update_R(5,:,:,:)=EQN_update_R(5,:,:,:)+1./paraRe/paraPr*&
                 ModDeviation_2nd_O3(rho0*te0*primitive(5,:,:,:),ni,nj,nk,ng,dxi,dxj,dxk,3,geometry)/&
                 (te0(1:ni,1:nj,1:nk)*rho0(1:ni,1:nj,1:nk))
+            
+            if (Diffusion_choice==1) then
+                ! viscous heating
+
+                do direction1=1,3
+                    do direction2=1,3
+                        EQN_update_R(5,:,:,:)=EQN_update_R(5,:,:,:)+1./(paraRe*paraGamma)*(paraGamma-1)*&
+                            rho0(1:ni,1:nj,1:nk)/p0(1:ni,1:nj,1:nk)*&
+                            shear(direction1,direction2,:,:,:)*&
+                            (shear(direction1,direction2,:,:,:)+shear(direction2,direction1,:,:,:))
+                    end do
+                end do
+
+                EQN_update_R(5,:,:,:)=EQN_update_R(5,:,:,:)-2./(3.*paraRe*paraGamma)*(paraGamma-1)*&
+                    rho0(1:ni,1:nj,1:nk)/p0(1:ni,1:nj,1:nk)*divergence_v**2
+            end if
         end select
         
     end subroutine ModEquation_Dynamo_HD
