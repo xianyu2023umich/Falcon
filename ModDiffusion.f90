@@ -18,7 +18,7 @@ module ModDiffusion
         real,intent(in)                 ::  p0(-ng+1:ni+ng,-ng+1:nj+ng,-ng+1:nk+ng),&
                                             rho0(-ng+1:ni+ng,-ng+1:nj+ng,-ng+1:nk+ng)
 
-        integer                         ::  direction1
+        integer                         ::  direction1,direction2
         real                            ::  c_s(-ng+1:ni+ng,-ng+1:nj+ng,-ng+1:nk+ng),&
                                             c(-ng+1:ni+ng,-ng+1:nj+ng,-ng+1:nk+ng)
         real                            ::  d_primitive(5,-ng+2:ni+ng-1,-ng+2:nj+ng-1,-ng+2:nk+ng-1)
@@ -61,7 +61,17 @@ module ModDiffusion
                     ! multiply flux by c_{i+1/2}
                     do ivar=1,5
                         flux(ivar,:,:,:)=flux(ivar,:,:,:)*(c(1:ni+1,:,:)+c(0:ni,:,:))*0.5
+                    end do
 
+                    do direction2=1,3
+                        flux(direction2+1,:,:,:)=flux(direction2+1,:,:,:)+&
+                            (primitive(direction2+1,1:ni+1,:,:)+primitive(direction2+1,0:ni,:,:))*&
+                            0.5*flux(1,:,:,:)
+                    end do
+
+
+                    ! update EQN_update_R
+                    do ivar=1,5
                         EQN_update_R(ivar,:,:,:)=EQN_update_R(ivar,:,:,:)+&
                             (flux(ivar,1:ni,:,:)-flux(ivar,2:ni+1,:,:))/dxi
                     end do
@@ -85,7 +95,15 @@ module ModDiffusion
                     ! multiply flux by c_{i+1/2}
                     do ivar=1,5
                         flux(ivar,:,:,:)=flux(ivar,:,:,:)*(c(:,1:nj+1,:)+c(:,0:nj,:))*0.5
+                    end do
 
+                    do direction2=1,3
+                        flux(direction2+1,:,:,:)=flux(direction2+1,:,:,:)+&
+                            (primitive(direction2+1,:,1:nj+1,:)+primitive(direction2+1,:,0:nj,:))*&
+                            0.5*flux(1,:,:,:)
+                    end do
+
+                    do ivar=1,5
                         EQN_update_R(ivar,:,:,:)=EQN_update_R(ivar,:,:,:)+&
                             (flux(ivar,:,1:nj,:)-flux(ivar,:,2:nj+1,:))/dxj
                     end do
@@ -109,7 +127,15 @@ module ModDiffusion
                     ! multiply flux by c_{i+1/2}
                     do ivar=1,5
                         flux(ivar,:,:,:)=flux(ivar,:,:,:)*(c(:,:,1:nk+1)+c(:,:,0:nk))*0.5
+                    end do
 
+                    do direction2=1,3
+                        flux(direction2+1,:,:,:)=flux(direction2+1,:,:,:)+&
+                            (primitive(direction2+1,:,:,1:nk+1)+primitive(direction2+1,:,:,0:nk))*&
+                            0.5*flux(1,:,:,:)
+                    end do
+
+                    do ivar=1,5
                         EQN_update_R(ivar,:,:,:)=EQN_update_R(ivar,:,:,:)+&
                             (flux(ivar,:,:,1:nk)-flux(ivar,:,:,2:nk+1))/dxk
                     end do
