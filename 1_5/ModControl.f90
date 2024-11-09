@@ -1,5 +1,5 @@
 Module ModControl
 
-    integer :: nMaxBlocksPerRank=1000
+    integer :: nMaxBlocksPerRank=100
 
 end Module ModControl
