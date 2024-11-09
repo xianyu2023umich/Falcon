@@ -18,6 +18,7 @@ program test1
     integer                 ::  iStep                       ! For step
     character(len=8)        ::  iStep_char                  ! char of istep
     logical                 ::  if_advance
+    logical                 ::  do_check
     real                    ::  dt
 
     integer                 ::  ir,it,ip,iLocalBlock        ! For test/debug
@@ -27,6 +28,7 @@ program test1
     np=72
 
     if_advance=.true.
+    do_check=.true.
 
     ! Initiate MPI and get MpiSize/Rank
     call MPI_INIT(ierr)
@@ -78,15 +80,21 @@ program test1
             end if
             if (MpiRank==0) print *,'iStep=',iStep,'Completed...'
 
-            do iLocalBlock=1,Tree%nLocalBlocks
-                Block1=>Tree%LocalBlocks(iLocalBlock)
-                do ip=-ng+1,ng+np; do it=-ng+1,ng+nt; do ir=-ng+1,ng+nr
-                    if(ieee_is_nan(Block1%primitive(ir,it,ip,1))) then
-                        print *,Block1%iBlock,ir,it,ip
-                        stop 1
-                    end if
-                end do; end do; end do
-            end do
+
+            ! Check if there is NaN
+
+            if (do_check) then
+                do iLocalBlock=1,Tree%nLocalBlocks
+                    Block1=>Tree%LocalBlocks(iLocalBlock)
+                    do ip=-ng+1,ng+np; do it=-ng+1,ng+nt; do ir=-ng+1,ng+nr
+                        if(ieee_is_nan(Block1%primitive(ir,it,ip,1))) then
+                            print *,Block1%iBlock,ir,it,ip
+                            stop 1
+                        end if
+                    end do; end do; end do
+                end do
+            end if
+            
             
         end do
     end if
