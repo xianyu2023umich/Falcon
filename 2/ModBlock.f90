@@ -18,7 +18,7 @@ module ModBlock
         real                        ::  xijk_range_GC(3,2)      ! range including GC
 
         integer                     ::  nvar,ni,nj,nk,ng        ! variables & grid
-        real,allocatable            ::  dxi,dxj,dxk             ! grid cell size
+        real                        ::  dxi,dxj,dxk             ! grid cell size
         real,allocatable            ::  xi(:),xj(:),xk(:)       ! grid
 
         real,allocatable            ::  primitive(:,:,:,:)      ! the primitive variables
