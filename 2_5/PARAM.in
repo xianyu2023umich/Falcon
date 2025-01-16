@@ -1,0 +1,40 @@
+#DOMAIN
+0.7             r_range(1)
+0.90            r_range(2)
+
+#GRID
+24              ni
+48              nj
+144              nk
+2               ng
+
+#ARTIFICIALCOOLING
+0.90            rmax
+scale           type_dc
+
+#MODELS
+1.0e-6          ModelS_delta
+1.8e5           ModelS_c_sound__CGS
+'/Users/qplazmfree/Documents/research/data/ModelS/0.7_1.0.dat'
+
+#AMR
+1               AMR_nLevels
+0.7
+1.0
+0.7
+1.0
+0.98
+0.99
+
+#SAVEPLOT
+50              nStepsSavePlot
+0.89            rSave
+180             nthSavePlot
+360             nphSavePlot
+
+#TIMESTEPPING
+0.8             CFL
+
+#STOP
+8000             nSteps
+
