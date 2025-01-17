@@ -10,14 +10,13 @@ module ModAdvance
 
     contains
 
-    subroutine ModAdvance_rk4(Tree,CFL_ad,if_all_same_sizes,MpiSize,MpiRank,dt)
+    subroutine ModAdvance_rk4(Tree,CFL_ad,if_all_same_sizes,dt)
         implicit none
         type(YYTree),intent(inout),target   ::  Tree                        ! Tree
         real,intent(in)                     ::  CFL_ad                      ! CFL
         logical,intent(in)                  ::  if_all_same_sizes           ! if all local blocks same size
-        integer,intent(in)                  ::  MpiSize,MpiRank
 
-        type(Block),pointer                 ::  Block1                      ! block pointer
+        type(BlockType),pointer             ::  Block1                      ! block pointer
         integer                             ::  iLocalBlock                 ! i of block
         integer                             ::  rk_index                    ! runge-kutta index
         logical                             ::  if_rk_input,if_rk_output    ! If use rk for R i/o
@@ -64,29 +63,19 @@ module ModAdvance
                             Block1%primitive(1:ni,1:nj,1:nk,:)+dt*EQN_update_R/(5.0-rk_index)
                     end if
                 end do
-                !if(MpiRank==2) print *,dt*EQN_update_R(32,62:64,1,3)/(5.0-rk_index)
-                !if(MpiRank==2) print *,Tree%LocalBlocks(2)%primitive(32,62:66,1,3)
-                !if(MpiRank==2) print *,Tree%LocalBlocks(2)%primitive_rk(32,62:66,1,3)
-                ! Communicate the GC for the current primitives
-                call ModAdvance_CommunicateAll(Tree,if_rk_output,MpiSize,MpiRank)
-                !call ModAdvance_CommunicateAll(Tree,if_rk_output,MpiSize,MpiRank)
-                !if(MpiRank==2) print *,Tree%LocalBlocks(2)%primitive(32,62:66,1,3)
-                !if(MpiRank==2) print *,Tree%LocalBlocks(2)%primitive_rk(32,62:66,1,3)
-                !if(MpiRank==2) print *,1
-                !if(MpiRank==2) print *,1
+                call ModAdvance_CommunicateAll(Tree,if_rk_output)
             end do
         else
         end if
     end subroutine ModAdvance_rk4
 
-    subroutine ModAdvance_CommunicateAll(Tree,if_rk,MpiSize,MpiRank)
+    subroutine ModAdvance_CommunicateAll(Tree,if_rk)
         implicit none
 
         type(YYTree),intent(inout),target   ::  Tree            ! Tree
         logical,intent(in)                  ::  if_rk           ! if_rk
-        integer,intent(in)                  ::  MpiSize,MpiRank ! for mpi
         
-        call ModCommunication_SendRecvGCAll(Tree,if_rk,MpiSize,MpiRank)
-        call ModGC_CommunicateGCLocal(Tree,MpiRank,if_rk)
+        call ModCommunication_SendRecvGCAll(Tree,if_rk)
+        call ModGC_CommunicateGCLocal(Tree,if_rk)
     end subroutine ModAdvance_CommunicateAll
 end module ModAdvance

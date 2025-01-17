@@ -1,11 +1,15 @@
 Module ModCommunication
 
-    use ModYinYangTree
-    use ModTimeStep
-    use ModGC
+    use ModBlock,       only:   BlockType,GC_target
+    use ModYinYang,     only:   ModYinYang_VecConv_1D
+    use ModYinYangTree, only:   YYTree
+    use ModGC,          only:   ModGC_FindGC_Single,&
+                                ModGC_GetGC_Targets_single,&
+                                ModGC_SetGC_Sources_Single
     use ModMath,        only:   ModMath_1D3D_interpolate_1D1D
     use ModControl,     only:   nMaxBlocksPerRank
-    use ModParameters,  only:   ni,nj,nk,ng,nvar
+    use ModParameters,  only:   MpiSize,MpiRank,&
+                                ni,nj,nk,ng,nvar
     use MPI
 
     contains
@@ -14,56 +18,48 @@ Module ModCommunication
     !
     subroutine ModCommunication_GlobalTimeStep(dt_local,dt_global)
         implicit none
-        real,intent(in)                 :: dt_local
-        real,intent(out)                :: dt_global
-        integer                         :: ierr
-
+        real,intent(in)                 ::  dt_local
+        real,intent(out)                ::  dt_global
+        integer                         ::  ierr
         call MPI_AllReduce(dt_local,dt_global,1,MPI_REAL,MPI_MIN,MPI_COMM_WORLD,ierr)
     end subroutine ModCommunication_GlobalTimeStep
 
-    subroutine ModCommunication_SetGCAll(Tree,MpiSize,MpiRank)
+    subroutine ModCommunication_SetGCAll(Tree)
         implicit none
         type(YYTree),target             ::  Tree                    ! the Tree
-        type(Block),pointer             ::  Block1                  ! one Block
-        integer                         ::  MpiSize,MpiRank
+        type(BlockType),pointer         ::  Block1                  ! one Block
         integer                         ::  iBlock
 
-        ! Loop each block and call 
-        ! ModGC_FindGC_Single
         do iBlock=1,size(Tree%LocalBlocks)
             Block1=>Tree%LocalBlocks(iBlock)
             call ModGC_FindGC_Single(Tree,Block1)
         end do
 
-        print *,'Find GC done.'
+        if(MpiRank==0) write(*,*)'Completed finding GC...'
 
         do iBlock=1,size(Tree%LocalBlocks)
             Block1=>Tree%LocalBlocks(iBlock)
-            call ModGC_GetGC_Targets_single(Tree,Block1,MpiSize)
+            call ModGC_GetGC_Targets_single(Tree,Block1)
         end do
+        
+        if(MpiRank==0) write(*,*)'Completed setting GC_targets...'
 
-        print *,'GCTarget done.'
+        call ModCommunication_GetnGC_sources(Tree)
 
-        call ModCommunication_GetnGC_soures(Tree,MpiSize,MpiRank)
-
-        print *,'Count nGCSource done.'
+        if(MpiRank==0) write(*,*)'Completed counting nGCsource...'
 
         do iBlock=1,size(Tree%LocalBlocks)
             Block1=>Tree%LocalBlocks(iBlock)
+            call ModGC_SetGC_Sources_Single(Tree,Block1)
         end do
 
-        do iBlock=1,size(Tree%LocalBlocks)
-            Block1=>Tree%LocalBlocks(iBlock)
-            call ModGC_SetGC_Sources_Single(Tree,Block1,MpiSize)
-        end do
-
+        if(MpiRank==0) write(*,*)'Completed setting GC_sources...'
     end subroutine ModCommunication_SetGCAll
 
-    subroutine ModCommunication_GetnGC_soures(Tree,MpiSize,MpiRank)
+    subroutine ModCommunication_GetnGC_sources(Tree)
         implicit none
         type(YYTree),intent(in),target  ::  Tree
-        integer,intent(in)              ::  MpiSize,MpiRank
-        type(Block),pointer             ::  Block1,Block2
+        type(BlockType),pointer         ::  Block1,Block2
         type(GC_target),pointer         ::  GC_target1,GC_source1
         integer                         ::  nGC_sources_table_local(Tree%NumLeafNodes)
         integer                         ::  nGC_sources_table_global(Tree%NumLeafNodes)
@@ -135,14 +131,13 @@ Module ModCommunication
             GC_source1%iBlock=recv_message(2)
             GC_source1%if_yin=recv_message(2).le.Tree%NumLeafNodes_YinYang(1)
         end do
-    end subroutine ModCommunication_GetnGC_soures
+    end subroutine ModCommunication_GetnGC_sources
 
-    subroutine ModCommunication_SendRecvGCAll(Tree,if_rk,MpiSize,MpiRank)
+    subroutine ModCommunication_SendRecvGCAll(Tree,if_rk)
         implicit none
         type(YYTree),intent(in),target  ::  Tree
-        type(Block),pointer             ::  Block1
+        type(BlockType),pointer         ::  Block1
         logical,intent(in)              ::  if_rk
-        integer,intent(in)              ::  MpiSize,MpiRank
 
         integer                         ::  iLocalBlock
         integer                         ::  iGC_target,iGC_source
@@ -186,12 +181,7 @@ Module ModCommunication
                 end if
                 
                 ! Get the tag, which contains information for both the send block and receive block.
-                tag = ModCommunication_GetTag(MpiSize,Tree%iLeafNode_ranges,Block1%iBlock,GC_source1%iBlock,GC_source1%iRank)
-
-                ! *,GC_source1%primitive_list(16191,3),&
-                !    GC_source1%xijk_list(16191,:)
-                !if (BLock1%iBlock==14 .and. GC_source1%iBlock==6) print *,Block1%primitive_rk(32,64,192,4)
-                !if (BLock1%iBlock==14 .and. GC_source1%iBlock==6) print *,Block1%primitive_rk(32,63,192,4)
+                tag = ModCommunication_GetTag(Tree%iLeafNode_ranges,Block1%iBlock,GC_source1%iBlock,GC_source1%iRank)
 
                 ! Send GCs.
                 if (GC_source1%iRank/=MpiRank) call MPI_ISEND(GC_source1%primitive_list,&
@@ -221,7 +211,7 @@ Module ModCommunication
                     allocate(recv_message(GC_target1%nGC,nvar))
                     !allocate(recv_message_1(GC_target1%nGC))
     
-                    tag=ModCommunication_GetTag(MpiSize,Tree%iLeafNode_ranges,GC_target1%iBlock,Block1%iBlock,MpiRank)
+                    tag=ModCommunication_GetTag(Tree%iLeafNode_ranges,GC_target1%iBlock,Block1%iBlock,MpiRank)
 
                     call MPI_RECV(recv_message,nvar*GC_target1%nGC,mpi_real,GC_target1%iRank,tag,MPI_COMM_WORLD,status,ierr)
 
@@ -243,9 +233,8 @@ Module ModCommunication
 
     end subroutine ModCommunication_SendRecvGCAll
 
-    function ModCommunication_GetTag(MpiSize,iLeafNode_ranges,iBlockSend,iBlockRecv,iRankRecv) result(Tag)
+    function ModCommunication_GetTag(iLeafNode_ranges,iBlockSend,iBlockRecv,iRankRecv) result(Tag)
         implicit none
-        integer,intent(in)      :: MpiSize
         integer,intent(in)      :: iLeafNode_ranges(0:MpiSize-1,2)
         integer,intent(in)      :: iBlockSend,iBlockRecv
         integer,intent(in)      :: iRankRecv
@@ -255,9 +244,8 @@ Module ModCommunication
         Tag=nMaxBlocksPerRank*iBlockSend+(iBlockRecv-iLeafNode_ranges(iRankRecv,1))
     end function ModCommunication_GetTag
 
-    function ModCommunication_SolveTag(MpiSize,iLeafNode_ranges,Tag,iRankRecv) result(iBlockSendRecv)
+    function ModCommunication_SolveTag(iLeafNode_ranges,Tag,iRankRecv) result(iBlockSendRecv)
         implicit none
-        integer,intent(in)      :: MpiSize
         integer,intent(in)      :: iLeafNode_ranges(0:MpiSize-1,2)
         integer,intent(in)      :: Tag
         integer,intent(in)      :: iRankRecv

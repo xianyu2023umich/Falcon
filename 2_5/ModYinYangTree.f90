@@ -1,8 +1,11 @@
 module ModYinYangTree
 
-    use ModConst, only : dpi
-    use ModBoundary
-    use ModYinYang
+    use ModBlock,       only:   BlockType,&
+                                ModBlock_Init
+    use ModConst,       only:   dpi
+    use ModBoundary,    only:   ModBoundary_if_top_bottom
+    use ModYinYang,     only:   ModYinYang_CoordConv_0D
+
     use ModAllocation
 
     ! one node
@@ -19,7 +22,7 @@ module ModYinYangTree
 
         integer                     ::  nLocalBlocks            ! number of local blocks
         integer,allocatable         ::  iBlocksGlobal(:)        ! list for local iblocks
-        type(Block),allocatable     ::  LocalBlocks(:)          ! the local blocks of this rank
+        type(BlockType),allocatable ::  LocalBlocks(:)          ! the local blocks of this rank
         integer,allocatable         ::  iLeafNode_ranges(:,:)   ! the iNode table for each rank
 
         integer                     ::  NumLeafNodes            ! total number of leaf nodes     

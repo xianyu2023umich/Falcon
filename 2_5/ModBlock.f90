@@ -12,7 +12,7 @@ module ModBlock
         real,allocatable            ::  primitive_list(:,:)     ! primitive of GCs
     end type GC_target
 
-    type Block
+    type BlockType
         integer                     ::  iBlock                  ! i of block
         logical                     ::  if_yin                  ! if yin or yang
         logical                     ::  if_top,if_bottom        ! if top or bottom (or both)
@@ -53,7 +53,7 @@ module ModBlock
         ! for those in the same rank no need to store it.
 
         integer                     ::  nGC_targets,nGC_sources
-    end type Block
+    end type BlockType
 
     contains
 
@@ -61,7 +61,7 @@ module ModBlock
 
     subroutine ModBlock_Init(Block1,iBlock,xijk_range,if_yin,if_SSM,if_use_actual_nvar)
         implicit none
-        type(Block),target          ::  Block1                  ! the block to be initiated
+        type(BlockType),target      ::  Block1                  ! the block to be initiated
         integer,intent(in)          ::  iBlock                  ! Global iBlock
         real,intent(in)             ::  xijk_range(3,2)         ! range
         logical,intent(in)          ::  if_yin                  ! if is yin or yang    
@@ -99,7 +99,7 @@ module ModBlock
 
     subroutine ModBlock_InitGrid(Block1,xijk_range)
         implicit none
-        type(Block),target          ::  Block1                  ! the block
+        type(BlockType),target      ::  Block1                  ! the block
         real,intent(in)             ::  xijk_range(3,2)         ! range
         integer                     ::  i,j,k                   ! indices
 
@@ -145,7 +145,7 @@ module ModBlock
                                         g__bar,heat__bar
 
         implicit none
-        type(Block),target          ::  Block1                  ! the block
+        type(BlockType),target      ::  Block1                  ! the block
         real                        ::  g__CGS,rho0__CGS,&      ! ModelS vars of one height
                                         p0__CGS,T0__CGS,&
                                         gamma1,gamma3,&
@@ -211,16 +211,17 @@ module ModBlock
 
     subroutine ModBlock_deallocate(Block1)
         implicit none
-        type(Block),intent(inout)   ::  Block1
-        integer                     ::  iGC_target,iGC_source
-        if (allocated(Block1%xi)) deallocate(Block1%xi)
-        if (allocated(Block1%xj)) deallocate(Block1%xj)
-        if (allocated(Block1%xk)) deallocate(Block1%xk)
+        type(BlockType),intent(inout)   ::  Block1
+        integer                         ::  iGC_target,iGC_source
+        
+        if (allocated(Block1%xi))               deallocate(Block1%xi)
+        if (allocated(Block1%xj))               deallocate(Block1%xj)
+        if (allocated(Block1%xk))               deallocate(Block1%xk)
 
-        if (allocated(Block1%primitive)) deallocate(Block1%primitive)
-        if (allocated(Block1%primitive_rk)) deallocate(Block1%primitive_rk)
+        if (allocated(Block1%primitive))        deallocate(Block1%primitive)
+        if (allocated(Block1%primitive_rk))     deallocate(Block1%primitive_rk)
 
-        if (allocated(Block1%GC_iBlocks)) deallocate(Block1%GC_iBlocks)
+        if (allocated(Block1%GC_iBlocks))       deallocate(Block1%GC_iBlocks)
         if (allocated(Block1%GC_targets)) then
             do iGC_target=1,size(Block1%GC_targets)
                 if (allocated(Block1%GC_targets(iGC_target)%ijk_list)) &
@@ -247,6 +248,8 @@ module ModBlock
         if (allocated(Block1%p0_over_rho0))     deallocate(Block1%p0_over_rho0)
         if (allocated(Block1%rho0T0))           deallocate(Block1%rho0T0)
         if (allocated(Block1%total_heat))       deallocate(Block1%total_heat)
+        if (allocated(Block1%Xi_rsst))          deallocate(Block1%Xi_rsst)
+        if (allocated(Block1%p1))               deallocate(Block1%p1)
 
         if (allocated(Block1%g_list))           deallocate(Block1%g_list)
         if (allocated(Block1%p0_list))          deallocate(Block1%p0_list)

@@ -1,5 +1,7 @@
 module ModParameters
 
+    integer             ::      MpiSize,MpiRank             !   MPI
+
     real                ::      r_range(2)                  !   Domain range
 
     integer             ::      ni                          !   Grid in a block

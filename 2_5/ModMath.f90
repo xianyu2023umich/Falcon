@@ -187,47 +187,4 @@ module ModMath
         end do; end do
 
     end subroutine ModMath_1D3D_interpolate_1D2D
-
-    function ModMath_count_unique_elements_3D(f,ni,nj,nk,n,num_list) result(unique_elements_output)
-
-        implicit none
-
-        integer,intent(in)      ::  ni,nj,nk
-        integer,intent(in)      ::  f(ni,nj,nk)
-        integer,intent(out)     ::  n
-
-        integer :: i,j,k,l
-        integer :: unique_elements(ni*nj*nk)
-        integer,allocatable :: unique_elements_output(:),num_list(:)
-        logical :: if_new
-
-        unique_elements=0
-        n=0
-
-        do i=1,ni; do j=1,nj; do k=1,nk
-            if_new=.True.
-            if (n .gt. 0) then
-                do l=1,n; if (unique_elements(l) .eq. f(i,j,k)) if_new=.False.; end do
-            end if
-            if (if_new) then 
-                n=n+1
-                unique_elements(n)=f(i,j,k)
-            end if
-        end do; end do; end do
-
-        allocate(num_list(n))
-        num_list=0
-
-        do i=1,ni; do j=1,nj; do k=1,nk
-            do l=1,n
-                if (unique_elements(l) .eq. f(i,j,k)) then
-                    num_list(l)=num_list(l)+1
-                end if
-            end do
-        end do; end do; end do
-
-        allocate(unique_elements_output(n))
-        unique_elements_output=unique_elements(1:n)
-    end function ModMath_count_unique_elements_3D
-
 end module ModMath

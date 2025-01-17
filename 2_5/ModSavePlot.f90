@@ -1,9 +1,12 @@
 module ModSavePlot
 
+    use ModBlock,       only:   BlockType
+    use ModYinYang,     only:   ModYinYang_CoordConv_0D,&
+                                ModYinYang_VecConv_0D
+    
+    use ModYinYangTree, only:   YYTree
     use ModConst,       only:   dpi
-    use ModParameters,  only:   nvar
-    use ModYinYangTree
-    use ModMath
+    use ModParameters,  only:   nvar,ni,nj,nk,ng
     use MPI
 
     contains
@@ -18,7 +21,7 @@ module ModSavePlot
         integer                             ::  MpiRank,MpiSubRank,MpiSubSize
 
         integer                             ::  iLocalBlock
-        type(Block),pointer                 ::  Block1
+        type(BlockType),pointer             ::  Block1
         logical                             ::  if_inside_single
         integer                             ::  if_join,MPI_COMM_SAVE_SUBSET,ierr
 
@@ -90,7 +93,7 @@ module ModSavePlot
     subroutine ModSave_Globe_single(Block1,r_save,ntp_out,t_out,p_out,save_primitive,if_inside_single)
         implicit none
 
-        type(Block),intent(in)              ::  Block1
+        type(BlockType),intent(in)          ::  Block1
         real,intent(in)                     ::  r_save
         integer,intent(in)                  ::  ntp_out(2)
         real,intent(in)                     ::  t_out(ntp_out(1)),p_out(ntp_out(2))

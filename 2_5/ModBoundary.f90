@@ -1,6 +1,6 @@
 module ModBoundary
 
-    use ModBlock
+    use ModBlock,       only:   BlockType
     use ModParameters,  only:   ni,nj,nk,ng
 
     contains
@@ -9,8 +9,8 @@ module ModBoundary
     !
     subroutine ModBoundary_if_top_bottom(Block1,r_range)
         implicit none
-        type(Block),intent(inout)   ::  Block1              ! The input Block
-        real,intent(in)             ::  r_range(2)          ! r_range of whole tree
+        type(BlockType),intent(inout)   ::  Block1              ! The input Block
+        real,intent(in)                 ::  r_range(2)          ! r_range of whole tree
 
         if (Block1%xi(ng+ng) .gt. r_range(2)) then
             Block1%if_top=.True.
@@ -28,9 +28,9 @@ module ModBoundary
 
     subroutine ModBoundary_Dynamo_HD_primitives(Block1,if_rk)
         implicit none
-        type(Block),intent(inout)   ::  Block1
-        logical,intent(in)          ::  if_rk
-        integer                     ::  i
+        type(BlockType),intent(inout)   ::  Block1
+        logical,intent(in)              ::  if_rk
+        integer                         ::  i
 
         if (if_rk) then
             if (Block1%if_top) then
@@ -68,8 +68,8 @@ module ModBoundary
     
     subroutine ModBoundary_Dynamo_HD_p1(Block1)
         implicit none
-        type(Block),intent(inout)   ::  Block1
-        integer                     ::  i
+        type(BlockType),intent(inout)   ::  Block1
+        integer                         ::  i
 
         if (Block1%if_top) then
             do i=ng+1,ng+ng

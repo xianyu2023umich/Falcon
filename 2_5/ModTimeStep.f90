@@ -1,8 +1,7 @@
 module ModTimeStep
 
-    use ieee_arithmetic
-    use ModYinYangTree
-    use ModSSM_v0
+    use ModBlock,       only:   BlockType
+    use ModYinYangTree, only:   YYTree
     use ModParameters,  only:   ModelS_delta
 
     contains
@@ -11,7 +10,7 @@ module ModTimeStep
         implicit none
         type(YYTree),intent(in),target  ::  Tree                ! Tree
         real,intent(in)                 ::  CFL_ad              ! CFL
-        type(Block),pointer             ::  Block1              ! Block pointer
+        type(BlockType),pointer         ::  Block1              ! Block pointer
         integer                         ::  iBlock              ! i of block   
         real                            ::  dt1                 ! dt of 1 Block
         real,intent(out)                ::  dt                  ! dt considering all local blocks
@@ -30,7 +29,7 @@ module ModTimeStep
 
     subroutine ModTimeStep_Dynamo_HD_single(Block1,geometry,CFL_ad,dt)
         implicit none
-        type(Block),intent(in)          ::  Block1              ! The block
+        type(BlockType),intent(in)      ::  Block1              ! The block
         character(len=*),intent(in)     ::  geometry
         real,intent(in)                 ::  CFL_ad
         real                            ::  dt_adv

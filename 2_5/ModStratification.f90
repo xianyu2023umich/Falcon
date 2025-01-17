@@ -232,7 +232,7 @@ Module ModStratification
             ModelS_r_list**2*&
             (ModelS_r_list-ModelS_rmax)/ &
             ModelS_dc_rmax**2/ &
-            R_sun__CGS
+            R_sun__CGS*2.0
 
         !ModelS_cooling_list__CGS(2:ModelS_npoints-1)=-&
         !    (flux__CGS_r2_s(3:ModelS_npoints)-flux__CGS_r2_s(1:ModelS_npoints-2))/&
@@ -249,6 +249,7 @@ Module ModStratification
         !print *,ModelS_diffusion_list__CGS(1:2900:10)
         !print *,ModelS_dc_rmax
         !print *,ModelS_rmax,ModelS_cooling_list__CGS(29001),flux_r2(1)
+        !print *,sum(ModelS_r_list(1:2001)**2*ModelS_cooling_list__CGS(1:2001)),sum(ModelS_r_list(1:2001)**2*ModelS_diffusion_list__CGS(1:2001))
     end subroutine ModStratification_calc_heating
 
     ! Calculate Xi(r)

@@ -1,19 +1,22 @@
 module ModEquation
 
     use ieee_arithmetic
-    use ModBlock
-    use ModSSM_v0
-    use ModSpherical
-    use ModBoundary
-    use ModDiffusion
-    use ModParameters,  only:   ni,nj,nk,ng
+    use ModBlock,       only:   BlockType
+    use ModSpherical,   only:   ModSpherical_Grad_f,&
+                                ModSpherical_A_dot_Grad_f,&
+                                ModSpherical_div,&
+                                ModSpherical_A_dot_nabla_B
+    use ModBoundary,    only:   ModBoundary_Dynamo_HD_primitives,&
+                                ModBoundary_Dynamo_HD_p1
+    use ModDiffusion,   only:   ModDiffusion_Aritificial_1
+    use ModParameters,  only:   ni,nj,nk,ng,ModelS_delta
 
     contains 
 
     ! The dynamo model from Hotta 2014.
     subroutine ModEquation_Dynamo_HD(Block1,if_rk,EQN_update_R)
         implicit none
-        type(Block),target          ::  Block1                      
+        type(BlockType),target      ::  Block1                      
         logical,intent(in)          ::  if_rk
         real,pointer                ::  primitive(:,:,:,:)
         integer                     ::  direction
@@ -43,8 +46,7 @@ module ModEquation
         end do
         EQN_update_R(:,:,:,1)=-1.0/(Block1%Xi_rsst(1:ni,1:nj,1:nk)**2*ModelS_delta)*&
             ModSpherical_div(ni,nj,nk,ng,Block1%xi,Block1%xj,Block1%dxi,Block1%dxj,Block1%dxk,tmp)
-        !print *,EQN_update_R(1,1,1,:)
-        !print *,Block1%Xi_rsst_list
+        
         ! EQN 2-4 Inertial Force
         EQN_update_R(:,:,:,2:4)=-&
             ModSpherical_A_dot_nabla_B(ni,nj,nk,ng,&

@@ -1,23 +1,31 @@
 Module ModGC
 
-    use ModYinYangTree
-    use ModMath
-    use ModAllocation
-    use ModParameters,  only:   ni,nj,nk,ng,nvar
-
+    use ModBlock,       only:   BlockType,GC_target,&
+                                ModBlock_Init,&
+                                ModBlock_deallocate,&
+                                ModBlock_InitGrid
+    use ModYinYang,     only:   ModYinYang_GetOtherRange,&
+                                ModYinYang_CoordConv_1D,&
+                                ModYinYang_VecConv_1D
+    use ModYinYangTree, only:   YYTree,TreeNode,&
+                                YinYangTree_FindNode,&
+                                YinYangTree_Get_rtp_range
+    use ModMath,        only:   ModMath_1D3D_interpolate_1D1D,&
+                                ModMath_IfBlocksInterSect
+    use ModParameters,  only:   MpiRank,MpiSize,&
+                                ni,nj,nk,ng,nvar
+    use ModAllocation,  only:   ModAllocation_GetRank
     contains
 
     ! communicate local GC_targets
-
-    subroutine ModGC_CommunicateGCLocal(Tree,MpiRank,if_rk)
+    subroutine ModGC_CommunicateGCLocal(Tree,if_rk)
         implicit none
         type(YYTree),target             ::  Tree
-        integer,intent(in)              ::  MpiRank
         logical,intent(in)              ::  if_rk
 
         integer                         ::  iLocalBlock
         integer                         ::  iGC_Target,iGC
-        type(Block),pointer             ::  Block_target,Block_source
+        type(BlockType),pointer         ::  Block_target,Block_source
         type(GC_target),pointer         ::  GC_target1
         real,pointer                    ::  primitive_send(:,:,:,:),&
                                             primitive_recv(:,:,:,:)
@@ -90,11 +98,10 @@ Module ModGC
 
     ! Find where each GC belongs to
     ! for all the local blocks
-    subroutine ModGC_SetGCAll(Tree,MpiSize)
+    subroutine ModGC_SetGCAll(Tree)
         implicit none
         type(YYTree),target             ::  Tree                    ! the Tree
-        type(Block),pointer             ::  Block1                  ! one Block
-        integer                         ::  MpiSize
+        type(BlockType),pointer         ::  Block1                  ! one Block
         integer                         ::  iBlock
 
         ! Loop each block and call 
@@ -108,14 +115,14 @@ Module ModGC
 
         do iBlock=1,size(Tree%LocalBlocks)
             Block1=>Tree%LocalBlocks(iBlock)
-            call ModGC_GetGC_Targets_single(Tree,Block1,MpiSize)
+            call ModGC_GetGC_Targets_single(Tree,Block1)
         end do
 
         print *,'GCTarget done.'
 
         do iBlock=1,size(Tree%LocalBlocks)
             Block1=>Tree%LocalBlocks(iBlock)
-            call ModGC_GetGC_Sources_Single(Tree,Block1,MpiSize)
+            call ModGC_GetGC_Sources_Single(Tree,Block1)
         end do
 
         print *,'GCSource done.'
@@ -125,13 +132,13 @@ Module ModGC
     subroutine ModGC_FindGC_Single(Tree,Block1)
         implicit none
         type(YYTree),intent(in)         ::  Tree
-        type(Block),intent(inout)       ::  Block1                  ! one Block
+        type(BlockType),intent(inout)   ::  Block1                  ! one Block
         type(TreeNode),pointer          ::  Node1                   ! one Node
         integer                         ::  i,j,k                   ! grid
         real                            ::  rtp(3)                  ! rtp of one point
 
-        ! Initialize to be -1
-        Block1%GC_iBlocks=-1                        
+        ! Initialize to be -777
+        Block1%GC_iBlocks=-777                     
         
         ! Find the node of each GC
         do i=-ng+1,ni+ng; do j=-ng+1,nj+ng; do k=-ng+1,nk+ng
@@ -149,66 +156,86 @@ Module ModGC
 
     ! set the GC_targets for a single block
 
-    subroutine ModGC_GetGC_Targets_single(Tree,Block1,MpiSize)
+    subroutine ModGC_GetGC_Targets_single(Tree,Block1)
         implicit none
         type(YYTree)                    ::  Tree                                 ! Tree
-        type(Block),target              ::  Block1                               ! The block to set
-        integer,intent(in)              ::  MpiSize                              ! MpiSize
+        type(BlockType),target          ::  Block1                               ! The block to set
 
-        integer                         ::  i,j,k,iUniqueGCiBlock,&
-                                            iUniqueGCiBlockGlobal_current,&
-                                            iGC_current
+        integer                         ::  i,j,k,l
+        integer                         ::  iUniqueGCiBlock,iGC_current
 
         type(GC_target),pointer         ::  GC_target1
         integer,allocatable             ::  UniqueGCiBlocksGlobal(:),nGC_list(:)
         integer                         ::  nUniqueGCiBlocksGlobal
+        integer                         ::  tmp1((ni+2*ng)*(nj+2*ng)*(nk+2*ng))
+        integer                         ::  tmp2((ni+2*ng)*(nj+2*ng)*(nk+2*ng))
+        logical                         ::  if_new_GCiBlock
 
-        ! Initializations to avoid warning message.
+        ! Initialize
         nUniqueGCiBlocksGlobal=0
+        tmp2=0
 
-        ! count how many unique blocks are there within the whole block containing GCs.
-        ! obviously this should be the number of GC_targets + 1, since it includes the block itself.
-        UniqueGCiBlocksGlobal=ModMath_count_unique_elements_3D(Block1%GC_iBlocks,ni+2*ng,nj+2*ng,nk+2*ng,&
-            nUniqueGCiBlocksGlobal,nGC_list)
+        ! Count how many unique elements are there
+        ! before allocating the arrays
+        ! At the same time count how many GCs for 
+        ! each unique block.
 
-        Block1%nGC_targets=nUniqueGCiBlocksGlobal-1
-        allocate(Block1%GC_targets(Block1%nGC_targets))
+        do i=-ng+1,ni+ng; do j=-ng+1,nj+ng; do k=-ng+1,nk+ng
+            if ((i<1 .or. i>ni .or. j<1 .or. j>nj .or. k<1 .or. k>nk)  .and. Block1%GC_iBlocks(i,j,k) /= -777) then
+                if_new_GCiBlock=.True.
+                if (nUniqueGCiBlocksGlobal .gt. 0) then
+                    do l=1,nUniqueGCiBlocksGlobal
+                        if (tmp1(l) == Block1%GC_iBlocks(i,j,k)) then 
+                            if_new_GCiBlock=.false.
+                            tmp2(l)=tmp2(l)+1
+                        end if
+                    end do
+                end if
+                if (if_new_GCiBlock) then 
+                    nUniqueGCiBlocksGlobal=nUniqueGCiBlocksGlobal+1
+                    tmp1(nUniqueGCiBlocksGlobal)=Block1%GC_iBlocks(i,j,k)
+                    tmp2(nUniqueGCiBlocksGlobal)=1
+                end if
+            end if
+        end do; end do; end do
+
+        ! Allocate based on what we got above
+        allocate(UniqueGCiBlocksGlobal  (   nUniqueGCiBlocksGlobal))
+        allocate(nGC_list               (   nUniqueGCiBlocksGlobal))
+        UniqueGCiBlocksGlobal   =   tmp1(1: nUniqueGCiBlocksGlobal)
+        nGC_list                =   tmp2(1: nUniqueGCiBlocksGlobal) 
+        Block1%nGC_targets      =           nUniqueGCiBlocksGlobal
+        allocate(Block1%GC_targets(         nUniqueGCiBlocksGlobal))
 
         ! loop all the GC_targets
-        ! initiate the current index to be 0
-        iUniqueGCiBlockGlobal_current=0
 
         do iUniqueGCiBlock=1,nUniqueGCiBlocksGlobal
 
-            ! if this is not this block itself then begin
-            if (UniqueGCiBlocksGlobal(iUniqueGCiBlock) .ne. -1) then
+            GC_target1=>Block1%GC_targets(iUniqueGCiBlock)
+            GC_target1%iBlock=UniqueGCiBlocksGlobal(iUniqueGCiBlock)
+            GC_target1%if_yin=GC_target1%iBlock.le.Tree%NumLeafNodes_YinYang(1)
 
-                iUniqueGCiBlockGlobal_current=iUniqueGCiBlockGlobal_current+1
+            ! see which rank the block of this GC_target belongs to
+            call ModAllocation_GetRank(Tree%NumLeafNodes,GC_target1%iBlock,&
+                MpiSize,GC_target1%iRank)
+            
+            ! allocate
+            GC_target1%nGC=nGC_list(iUniqueGCiBlock)
+            allocate(GC_target1%xijk_list(nGC_list(iUniqueGCiBlock),3))
+            allocate(GC_target1%ijk_list(nGC_list(iUniqueGCiBlock),3))
 
-                GC_target1=>Block1%GC_targets(iUniqueGCiBlockGlobal_current)
-                GC_target1%iBlock=UniqueGCiBlocksGlobal(iUniqueGCiBlock)
-                GC_target1%if_yin=GC_target1%iBlock.le.Tree%NumLeafNodes_YinYang(1)
-
-                ! see which rank the block of this GC_target belongs to
-                call ModAllocation_GetRank(Tree%NumLeafNodes,GC_target1%iBlock,&
-                    MpiSize,GC_target1%iRank)
-                
-                ! allocate
-                GC_target1%nGC=nGC_list(iUniqueGCiBlock)
-                allocate(GC_target1%xijk_list(nGC_list(iUniqueGCiBlock),3))
-                allocate(GC_target1%ijk_list(nGC_list(iUniqueGCiBlock),3))
-
-                ! loop all the points to fill in the GC_target1
-                iGC_current=0
-                do i=-ng+1,ni+ng; do j=-ng+1,nj+ng; do k=-ng+1,nk+ng
+            ! loop all the points to fill in the GC_target1
+            iGC_current=0
+            do i=-ng+1,ni+ng; do j=-ng+1,nj+ng; do k=-ng+1,nk+ng
+                if (i<1 .or. i>ni .or. j<1 .or. j>nj .or. k<1 .or. k>nk) then
                     if (Block1%GC_iBlocks(i,j,k) .eq. UniqueGCiBlocksGlobal(iUniqueGCiBlock)) then
 
                         iGC_current=iGC_current+1
                         GC_target1%ijk_list (iGC_current,:)=[i,j,k]
                         GC_target1%xijk_list(iGC_current,:)=[Block1%xi(i),Block1%xj(j),Block1%xk(k)]
                     end if
-                end do; end do; end do
-            end if
+                end if
+            end do; end do; end do
         end do
         
         deallocate(UniqueGCiBlocksGlobal)
@@ -226,7 +253,7 @@ Module ModGC
     recursive subroutine ModGC_CountNeighbours(Tree,CurrentNode,Block1,NumNeighbours)
         implicit none
         type(YYTree)    ,intent(in)     ::  Tree                            ! The Tree
-        type(Block)     ,intent(in)     ::  Block1                          ! The Block  
+        type(BlockType) ,intent(in)     ::  Block1                          ! The Block  
         type(TreeNode)  ,intent(in)     ::  CurrentNode                     ! Current Node
         integer         ,intent(inout)  ::  NumNeighbours                   ! Num of neighbours
 
@@ -274,7 +301,7 @@ Module ModGC
         NumNeighbours,iNeighbour,iBlocks_Neighbours,rtp_ranges_Neighbours)
         implicit none
         type(YYTree),intent(in)         ::  Tree
-        type(Block),intent(in)          ::  Block1
+        type(BlockType),intent(in)      ::  Block1
         type(TreeNode),intent(in)       ::  CurrentNode
         integer,intent(in)              ::  NumNeighbours
         integer,intent(inout)           ::  iNeighbour
@@ -333,11 +360,10 @@ Module ModGC
     ! the cases they should be identical, but MIGHT be different when I 
     ! later go into the YinYang grid. So just a preparation for that.
     ! 
-    subroutine ModGC_GetGC_Sources_Single(Tree,Block1,MpiSize)
+    subroutine ModGC_GetGC_Sources_Single(Tree,Block1)
         implicit none
         type(YYTree),intent(in)         :: Tree
-        type(Block),target              :: Block1
-        integer,intent(in)              :: MpiSize
+        type(BlockType),target          :: Block1
         
         integer                         :: NumNeighbours,NumGCNeighbours
         integer                         :: iNeighbour,iGCNeighbour,iGC_target
@@ -345,7 +371,7 @@ Module ModGC
         real,allocatable                :: rtp_ranges_Neighbours(:,:,:)
         integer,allocatable             :: iBlocks_Neighbours(:)
         logical,allocatable             :: if_GC_neighbours(:)
-        type(Block),target              :: Block2
+        type(BlockType),target          :: Block2
 
         ! First count the number of neighbours. 
         ! Loop Yin and Yang.
@@ -381,7 +407,7 @@ Module ModGC
             !
             call ModBlock_InitGrid(Block2,rtp_ranges_Neighbours(iNeighbour,:,:))
             call ModGC_FindGC_Single(Tree,Block2)
-            call ModGC_GetGC_targets_single(Tree,Block2,MpiSize)
+            call ModGC_GetGC_targets_single(Tree,Block2)
 
             ! loop by all the unique GC target blocks to see whether
             ! at least one GC falls in block1.
@@ -413,7 +439,7 @@ Module ModGC
             !
             call ModBlock_InitGrid(Block2,rtp_ranges_Neighbours(iNeighbour,:,:))
             call ModGC_FindGC_Single(Tree,Block2)
-            call ModGC_GetGC_targets_single(Tree,Block2,MpiSize)
+            call ModGC_GetGC_targets_single(Tree,Block2)
 
             ! loop the GC targets to find those fall into block1
             ! and copy them to GC_sources of block1
@@ -464,15 +490,14 @@ Module ModGC
     ! This subroutine is called after ModCommunication_GetnGC_sources
     ! completes getting the n of GC_sources for each Block.
     ! This subroutine aims to allocate the GC_sources.
-    subroutine ModGC_SetGC_Sources_Single(Tree,Block1,MpiSize)
+    subroutine ModGC_SetGC_Sources_Single(Tree,Block1)
         implicit none
         type(YYTree),intent(in)         ::  Tree
-        type(Block),target,intent(in)   ::  Block1
-        integer,intent(in)              ::  MpiSize
+        type(BlockType),target,intent(in)   ::  Block1
 
         integer                         ::  iGC_source,iGC_target
         type(GC_target),pointer         ::  GC_target1,GC_source1
-        type(Block),target              ::  Block2
+        type(BlockType),target          ::  Block2
 
         ! Loop all the GC_sources
         do iGC_source=1,Block1%nGC_sources
@@ -486,7 +511,7 @@ Module ModGC
                 YinYangTree_Get_rtp_range(Tree,GC_source1%iBlock),&
                 if_yin=GC_source1%if_yin,if_SSM=.false.,if_use_actual_nvar=.false.)
             call ModGC_FindGC_Single(Tree,Block2)
-            call ModGC_GetGC_targets_single(Tree,Block2,MpiSize)
+            call ModGC_GetGC_targets_single(Tree,Block2)
 
             ! loop the GC targets to find those fall into block1
             ! and copy them to GC_sources of block1

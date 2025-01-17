@@ -1,14 +1,14 @@
 module ModDiffusion
 
-    use ModBlock
-    use ModLinReconstruct
+    use ModBlock,           only:   BlockType
     use ModParameters,      only:   ni,nj,nk,ng,ModelS_delta
+    use ModLinReconstruct,  only:   ModLinReconstruct_minmod
 
     contains
 
     subroutine ModDiffusion_Aritificial_1(Block1,EQN_update_R,h,if_rk)
         implicit none
-        type(Block),intent(in),target   ::  Block1
+        type(BlockType),target          ::  Block1
         real,intent(inout)              ::  EQN_update_R(1:ni,1:nj,1:nk,1:5)
         integer,intent(in)              ::  h
         logical,intent(in)              ::  if_rk
