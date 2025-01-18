@@ -27,6 +27,7 @@ module ModBlock
         integer,allocatable         ::  GC_iBlocks(:,:,:)       ! the iBlocks of EVERY grid (including non-GC)
         type(GC_target),allocatable ::  GC_targets(:)           ! GC targets 
         type(GC_target),allocatable ::  GC_sources(:)           ! GC targets 
+        integer,allocatable         ::  requests(:)
 
         real,allocatable            ::  g_list(:)               ! background gravity
         real,allocatable            ::  p0_list(:)              ! background pressure
@@ -213,7 +214,7 @@ module ModBlock
         implicit none
         type(BlockType),intent(inout)   ::  Block1
         integer                         ::  iGC_target,iGC_source
-        
+
         if (allocated(Block1%xi))               deallocate(Block1%xi)
         if (allocated(Block1%xj))               deallocate(Block1%xj)
         if (allocated(Block1%xk))               deallocate(Block1%xk)
