@@ -492,12 +492,13 @@ Module ModGC
     ! This subroutine aims to allocate the GC_sources.
     subroutine ModGC_SetGC_Sources_Single(Tree,Block1)
         implicit none
-        type(YYTree),intent(in)         ::  Tree
-        type(BlockType),target,intent(in)   ::  Block1
+        type(YYTree),intent(in)             ::  Tree
+        type(BlockType),target              ::  Block1
 
-        integer                         ::  iGC_source,iGC_target
-        type(GC_target),pointer         ::  GC_target1,GC_source1
-        type(BlockType),target          ::  Block2
+        integer                             ::  iGC_source,iGC_target
+        type(GC_target),pointer             ::  GC_target1,GC_source1
+        type(BlockType),target              ::  Block2
+        integer                             ::  nSend
 
         ! Loop all the GC_sources
         do iGC_source=1,Block1%nGC_sources
@@ -534,6 +535,17 @@ Module ModGC
             end do
             call ModBlock_deallocate(Block2)
         end do
+
+        ! Then count how many sends should be done.
+        ! Allocate requests.
+
+        nSend=0
+        do iGC_source=1,Block1%nGC_sources
+            if (GC_source1%iRank/=MpiRank) then
+                nSend=nSend+1
+            end if
+        end do
+        if (nSend>1) allocate(Block1%requests(nSend))
 
     end subroutine ModGC_SetGC_Sources_Single
     

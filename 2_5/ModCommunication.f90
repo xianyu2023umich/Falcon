@@ -65,7 +65,6 @@ Module ModCommunication
         integer                         ::  nGC_sources_table_global(Tree%NumLeafNodes)
         integer                         ::  iLocalBlock,iGC_target
         integer                         ::  iRecv,nRecv,recv_message(3)
-        integer                         ::  isend,nSend
         integer                         ::  ierr,request,status(MPI_STATUS_SIZE)
         
         ! Get the local table for GC_sources of each block
@@ -90,33 +89,17 @@ Module ModCommunication
             Block1%nGC_sources=0
         end do
 
-        ! See how many sends should be done for each block.
-        ! And then allocate Block1%requests
-        do iLocalBlock=1,Tree%nLocalBlocks
-            nSend=0
-            Block1=>Tree%LocalBlocks(iLocalBlock)
-            do iGC_target=1,Block1%nGC_targets
-                GC_target1=>Block1%GC_targets(iGC_target)
-                if (GC_target1%iRank/=MpiRank) nSend=nSend+1
-            end do
-            if (nSend>0) allocate(Block1%requests(nSend))
-        end do
-
         ! Then loop the local blocks and send the iBlock of GC_targets
         ! to the target ranks.
 
         do iLocalBlock=1,Tree%nLocalBlocks
             Block1=>Tree%LocalBlocks(iLocalBlock)
-            isend=0
             do iGC_target=1,Block1%nGC_targets
                 
                 GC_target1=>Block1%GC_targets(iGC_target)
                 if (GC_target1%iRank/=MpiRank) then
                     call MPI_ISEND([MpiRank,Block1%iBlock,GC_target1%iBlock],3,mpi_integer,&
                         GC_target1%iRank,1,MPI_COMM_WORLD,request,ierr)
-                    
-                    iSend=iSend+1
-                    Block1%requests(iSend)=request
                 else
                     Block2=>Tree%LocalBlocks(GC_target1%iBlock-Tree%iLeafNode_ranges(MpiRank,1)+1)
                     Block2%nGC_sources=Block2%nGC_sources+1
@@ -125,7 +108,6 @@ Module ModCommunication
                     GC_source1%iRank=MpiRank
                     GC_source1%iBlock=Block1%iBlock
                     GC_source1%if_yin=Block1%iBlock.le.Tree%NumLeafNodes_YinYang(1)
-                    
                 end if
             end do
         end do
@@ -147,14 +129,6 @@ Module ModCommunication
             GC_source1%iRank=recv_message(1)
             GC_source1%iBlock=recv_message(2)
             GC_source1%if_yin=recv_message(2).le.Tree%NumLeafNodes_YinYang(1)
-        end do
-
-        ! At last, wait for all the requests to be completed.
-        do iLocalBlock=1,Tree%nLocalBlocks
-            Block1=>Tree%LocalBlocks(iLocalBlock)
-            do iSend=1,size(Block1%requests)
-                call MPI_WAIT(Block1%requests(iSend),status,ierr)
-            end do
         end do
     end subroutine ModCommunication_GetnGC_sources
 
