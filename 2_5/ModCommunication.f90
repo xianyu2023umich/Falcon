@@ -152,7 +152,7 @@ Module ModCommunication
         !
         do iLocalBlock=1,Tree%nLocalBlocks
             Block1 => Tree%LocalBlocks(iLocalBlock)
-            Block1%requests=MPI_REQUEST_NULL
+            if (allocated(Block1%requests))Block1%requests=MPI_REQUEST_NULL
             iSend=0
 
             ! See if rk primitive
