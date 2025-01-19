@@ -545,7 +545,7 @@ Module ModGC
                 nSend=nSend+1
             end if
         end do
-        if (nSend>1) allocate(Block1%requests(nSend))
+        if (nSend>0) allocate(Block1%requests(nSend))
 
     end subroutine ModGC_SetGC_Sources_Single
     
