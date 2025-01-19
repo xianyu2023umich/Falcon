@@ -152,6 +152,7 @@ Module ModCommunication
         !
         do iLocalBlock=1,Tree%nLocalBlocks
             Block1 => Tree%LocalBlocks(iLocalBlock)
+            Block1%requests=MPI_REQUEST_NULL
             iSend=0
 
             ! See if rk primitive
@@ -242,9 +243,6 @@ Module ModCommunication
                 call MPI_WAIT(Block1%requests(iSend),status,ierr)
             end do
         end do
-
-        
-
     end subroutine ModCommunication_SendRecvGCAll
 
     function ModCommunication_GetTag(iLeafNode_ranges,iBlockSend,iBlockRecv,iRankRecv) result(Tag)
