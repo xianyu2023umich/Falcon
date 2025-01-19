@@ -239,9 +239,11 @@ Module ModCommunication
 
         do iLocalBlock=1,Tree%nLocalBlocks
             Block1=>Tree%LocalBlocks(iLocalBlock)
-            do iSend=1,size(Block1%requests)
-                call MPI_WAIT(Block1%requests(iSend),status,ierr)
-            end do
+            if(allocated(Block1%requests)) then
+                do iSend=1,size(Block1%requests)
+                    call MPI_WAIT(Block1%requests(iSend),status,ierr)
+                end do
+            end if
         end do
     end subroutine ModCommunication_SendRecvGCAll
 
