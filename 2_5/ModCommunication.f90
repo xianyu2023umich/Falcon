@@ -232,6 +232,8 @@ Module ModCommunication
             end do
         end do
 
+        call MPI_BARRIER(MPI_COMM_WORLD,ierr)
+
         ! wait for all requests to be completed.
 
         do iLocalBlock=1,Tree%nLocalBlocks
@@ -241,7 +243,7 @@ Module ModCommunication
             end do
         end do
 
-        call MPI_BARRIER(MPI_COMM_WORLD,ierr)
+        
 
     end subroutine ModCommunication_SendRecvGCAll
 
