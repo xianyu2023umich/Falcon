@@ -68,6 +68,7 @@ module ModBlock
         logical,intent(in)          ::  if_yin                  ! if is yin or yang    
         logical,intent(in)          ::  if_SSM                  ! if initialize SSM     
         logical,intent(in)          ::  if_use_actual_nvar      ! if use nvar=5 or 1
+        integer                     ::  i,j,k
 
         ! set iBlock and if_yin
         Block1%iBlock=iBlock
@@ -91,6 +92,12 @@ module ModBlock
         Block1%primitive_rk =0.
         call random_number(Block1%primitive)
         Block1%primitive=(Block1%primitive-0.5)*1.e-2
+
+        ! Set ghost cell values to zero
+        do i=-ng+1,ng+ni; do j=-ng+1,ng+nj; do k=-ng+1,ng+nk
+            if (i<1 .or. i>ni .or. j<1 .or. j>nj .or. k<1 .or. k>nk) &
+                Block1%primitive(i,j,k,:)=0.0
+        end do; end do; end do
         Block1%primitive_rk=Block1%primitive
         ! ModelS initiation
         if (if_SSM) call ModBlock_Init_ModelS(Block1)
