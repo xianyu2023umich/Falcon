@@ -5,7 +5,7 @@ module ModReadParameters
                                     ModelS_rmax,ModelS_dc_type,ModelS_dc_rmax,ModelS_filename,&
                                     nStepsSavePlot,nthSavePlot,nphSavePlot,nSteps,rSave,CFL
     use ModStratification,  only:   ModStratification_DoAll
-    use ModAMR,             only:   AMR_nLevels,AMR_r_ranges
+    use ModAMR,             only:   AMR_nLevels,AMR_r_ranges,AMR_if_divide_r
 
     contains
 
@@ -144,8 +144,14 @@ module ModReadParameters
                     if (AMR_nLevels>=1) then
                         ! First allocate
                         allocate(AMR_r_ranges(2,AMR_nLevels))
+                        allocate(AMR_if_divide_r(AMR_nLevels))
 
                         do AMR_iLevel=1,AMR_nLevels
+                            read(logical_unit, *, iostat=ios) AMR_if_divide_r(AMR_iLevel)
+                            if (ios/=0) then
+                                write(*,*) "Error from ",name_sub,": Error reading AMR_if_divide_r(AMR_iLevel)"
+                                stop 1
+                            end if
                             read(logical_unit, *, iostat=ios) AMR_r_ranges(1,AMR_iLevel)
                             if (ios/=0) then
                                 write(*,*) "Error from ",name_sub,": Error reading AMR_r_ranges(1,AMR_iLevel)"

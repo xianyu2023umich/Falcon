@@ -1,6 +1,6 @@
 #DOMAIN
 0.7             r_range(1)
-0.90            r_range(2)
+0.96            r_range(2)
 
 #GRID
 24              ni
@@ -9,7 +9,7 @@
 2               ng
 
 #ARTIFICIALCOOLING
-0.90            rmax
+0.96            rmax
 scale           type_dc
 
 #MODELS
@@ -19,22 +19,19 @@ scale           type_dc
 
 #AMR
 1               AMR_nLevels
+F
 0.7
 1.0
-0.7
-1.0
-0.98
-0.99
 
 #SAVEPLOT
-50              nStepsSavePlot
+1000              nStepsSavePlot
 0.89            rSave
 180             nthSavePlot
 360             nphSavePlot
 
 #TIMESTEPPING
-0.8             CFL
+0.5             CFL
 
 #STOP
-8000             nSteps
+20000             nSteps
 
