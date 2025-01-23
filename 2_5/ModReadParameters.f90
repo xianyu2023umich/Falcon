@@ -3,7 +3,8 @@ module ModReadParameters
     use ModParameters,      only:   r_range,ni,nj,nk,ng,nvar,&
                                     ModelS_delta,ModelS_c_sound__CGS,&
                                     ModelS_rmax,ModelS_dc_type,ModelS_dc_rmax,ModelS_filename,&
-                                    nStepsSavePlot,nthSavePlot,nphSavePlot,nSteps,rSave,CFL
+                                    nStepsSavePlot,nthSavePlot,nphSavePlot,nSteps,rSave,CFL,&
+                                    ModelS_heating_ratio
     use ModStratification,  only:   ModStratification_DoAll
     use ModAMR,             only:   AMR_nLevels,AMR_r_ranges,AMR_if_divide_r
 
@@ -199,6 +200,13 @@ module ModReadParameters
                     read(logical_unit, *, iostat=ios) CFL
                     if (ios/=0) then
                         write(*,*) "Error from ",name_sub,": Error reading CFL"
+                        stop 1
+                    end if
+
+                case("#HEATING")
+                    read(logical_unit, *, iostat=ios) ModelS_heating_ratio
+                    if (ios/=0) then
+                        write(*,*) "Error from ",name_sub,": Error reading ModelS_heating_ratio"
                         stop 1
                     end if
                     

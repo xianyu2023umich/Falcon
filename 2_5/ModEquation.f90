@@ -9,7 +9,7 @@ module ModEquation
     use ModBoundary,    only:   ModBoundary_Dynamo_HD_primitives,&
                                 ModBoundary_Dynamo_HD_p1
     use ModDiffusion,   only:   ModDiffusion_Aritificial_1
-    use ModParameters,  only:   ni,nj,nk,ng,ModelS_delta
+    use ModParameters,  only:   ni,nj,nk,ng,ModelS_delta,ModelS_heating_ratio
 
     contains 
 
@@ -75,12 +75,9 @@ module ModEquation
         
         ! EQN5 heating
         EQN_update_R(:,:,:,5)=EQN_update_R(:,:,:,5)+&
-            (Block1%total_heat(1:ni,1:nj,1:nk))/Block1%rho0T0(1:ni,1:nj,1:nk)
-        !print *,(Block1%total_heat(1,1,1)),Block1%rho0T0(1,1,1)
-        !print *,(Block1%total_heat(ni,1,1))/Block1%rho0T0(ni,1,1)
+            ModelS_heating_ratio*(Block1%total_heat(1:ni,1:nj,1:nk))/Block1%rho0T0(1:ni,1:nj,1:nk)
+
         ! Aritificial diffusion
         call ModDiffusion_Aritificial_1(Block1,EQN_update_R,2,if_rk)
-        !EQN_update_R(:,:,:,:)=primitive*1.e7
-        !EQN_update_R(:,:,:,[2,3,4])=0.0
     end subroutine ModEquation_Dynamo_HD
 end module ModEquation

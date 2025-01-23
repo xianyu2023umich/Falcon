@@ -17,6 +17,7 @@ module ModParameters
     real                ::      ModelS_rmax                 !   Top of cooling
     real                ::      ModelS_dc_rmax=-1.0
     character(len=100)  ::      ModelS_filename
+    real                ::      ModelS_heating_ratio=1.0
 
     integer             ::      nStepsSavePlot
     integer             ::      nthSavePlot
@@ -25,5 +26,4 @@ module ModParameters
 
     integer             ::      nSteps                      !   Total n of steps
     real                ::      CFL        
-
 end module ModParameters
