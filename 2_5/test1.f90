@@ -15,6 +15,7 @@ program test1
                                     YinYangTree_SetAll
     use ModStratification,  only:   ModStratification_DoAll
     use ModInitiation,      only:   ModInitiation_harmonic
+    use ModAllocation,      only:   ModAllocation_GetRank
     use MPI
 
     implicit none
@@ -82,7 +83,7 @@ program test1
     subroutine test1_INITIATION
         call YinYangTree_InitTree(Tree,r_range)
         call ModAMR_set_grid(Tree)
-        call YinYangTree_SetAll(Tree,MpiSize,MpiRank)
+        call YinYangTree_SetAll(Tree)
         print *,'I"m ',MpiRank,', I have',Tree%nLocalBlocks
         call ModCommunication_SetGCAll(Tree)
         call ModAdvance_CommunicateAll(Tree,.false.)
