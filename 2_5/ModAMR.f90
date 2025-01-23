@@ -6,7 +6,7 @@ module ModAMR
 
     integer             ::      AMR_nLevels,AMR_iLevel
     real,allocatable    ::      AMR_r_ranges(:,:)
-    logical,allocatable ::      AMR_if_divide_r(:)
+    logical,allocatable ::      AMR_rtp_if_divide(:,:)
 
     contains
 
@@ -20,7 +20,7 @@ module ModAMR
         if (AMR_nLevels>0 .and. AMR_nLevels<=16) then
             
             do AMR_iLevel=1,AMR_nLevels
-                call ModAMR_DivideAll(Tree,[AMR_if_divide_r(AMR_iLevel),.True.,.True.])
+                call ModAMR_DivideAll(Tree,[AMR_rtp_if_divide(AMR_iLevel,:)])
             end do
         end if
     end subroutine ModAMR_set_grid
