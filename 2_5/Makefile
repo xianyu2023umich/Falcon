@@ -4,7 +4,7 @@ GFORTRAN = gfortran -Wall -Wextra -g -O3
 # the objects for test1
 
 MPIOBJ = ModCommunication.o ModAdvance.o ModSavePlot.o
-GFORTRANOBJ = 	ModYinYang.o ModConst.o ModAllocation.o	ModMath.o ModDerivative.o ModParameters.o \
+GFORTRANOBJ = 	ModParameters.o ModYinYang.o ModConst.o ModAllocation.o	ModMath.o ModDerivative.o  \
 				ModStratification.o ModControl.o ModSSM.o ModSpherical.o ModBlock.o \
 				ModBoundary.o ModYinYangTree.o ModLinReconstruct.o ModDiffusion.o ModEquation.o	ModGC.o \
 				ModTimeStep.o ModAMR.o ModReadParameters.o ModCheck.o ModInitiation.o

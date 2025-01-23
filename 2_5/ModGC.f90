@@ -14,7 +14,8 @@ Module ModGC
                                 ModMath_IfBlocksInterSect
     use ModParameters,  only:   MpiRank,MpiSize,&
                                 ni,nj,nk,ng,nvar
-    use ModAllocation,  only:   ModAllocation_GetRank
+    use ModAllocation,  only:   ModAllocation_GetRank,&
+                                ranges_of_ranks
     contains
 
     ! communicate local GC_targets
@@ -47,7 +48,7 @@ Module ModGC
                     ! allocate primitive_GC
 
                     GC_target1=>Block_target%GC_targets(iGC_Target)
-                    Block_source=>Tree%LocalBlocks(GC_target1%iBlock-Tree%iLeafNode_ranges(MpiRank,1)+1)
+                    Block_source=>Tree%LocalBlocks(GC_target1%iBlock-ranges_of_ranks(MpiRank,1)+1)
                     allocate(primitive_GC(GC_target1%nGC,nvar))
 
                     ! if_rk
@@ -216,8 +217,7 @@ Module ModGC
             GC_target1%if_yin=GC_target1%iBlock.le.Tree%NumLeafNodes_YinYang(1)
 
             ! see which rank the block of this GC_target belongs to
-            call ModAllocation_GetRank(Tree%NumLeafNodes,GC_target1%iBlock,&
-                MpiSize,GC_target1%iRank)
+            GC_target1%iRank=ModAllocation_GetRank(GC_target1%iBlock)
             
             ! allocate
             GC_target1%nGC=nGC_list(iUniqueGCiBlock)
@@ -457,8 +457,7 @@ Module ModGC
                     ! then find iRank
                     !
                     GC_source1%iBlock=iBlocks_Neighbours(iNeighbour)
-                    call ModAllocation_GetRank(Tree%NumLeafNodes,&
-                        GC_source1%iBlock,MpiSize,GC_source1%iRank)
+                    GC_source1%iRank=ModAllocation_GetRank(GC_source1%iBlock)
                     
                     
                     ! copy nGC then allocate and copy (x)ijk_list

@@ -10,6 +10,7 @@ Module ModCommunication
     use ModControl,     only:   nMaxBlocksPerRank
     use ModParameters,  only:   MpiSize,MpiRank,&
                                 ni,nj,nk,ng,nvar
+    use ModAllocation,  only:   ranges_of_ranks
     use MPI
 
     contains
@@ -41,6 +42,7 @@ Module ModCommunication
             Block1=>Tree%LocalBlocks(iBlock)
             call ModGC_GetGC_Targets_single(Tree,Block1)
         end do
+        !print *,Block1%GC_targets(:)%iRank
         
         if(MpiRank==0) write(*,*)'Completed setting GC_targets...'
 
@@ -95,20 +97,30 @@ Module ModCommunication
         do iLocalBlock=1,Tree%nLocalBlocks
             Block1=>Tree%LocalBlocks(iLocalBlock)
             do iGC_target=1,Block1%nGC_targets
+                !if (MpiRank==0) print *,111
                 
                 GC_target1=>Block1%GC_targets(iGC_target)
+
+                !if (MpiRank==0) print *,size(Block1%GC_targets),Block1%nGC_targets,&
+                !    iGC_target,GC_target1%iRank,MpiRank
                 if (GC_target1%iRank/=MpiRank) then
+                    !if (MpiRank==0) print *,MpiRank,iGC_target
+                    !if (MpiRank==0) print *,[MpiRank,Block1%iBlock,GC_target1%iBlock]
                     call MPI_ISEND([MpiRank,Block1%iBlock,GC_target1%iBlock],3,mpi_integer,&
                         GC_target1%iRank,1,MPI_COMM_WORLD,request,ierr)
+                    !if (MpiRank==0) print *,MpiRank,iGC_target
                 else
-                    Block2=>Tree%LocalBlocks(GC_target1%iBlock-Tree%iLeafNode_ranges(MpiRank,1)+1)
+                    !if (MpiRank==0) print *,456
+                    Block2=>Tree%LocalBlocks(GC_target1%iBlock-ranges_of_ranks(MpiRank,1)+1)
                     Block2%nGC_sources=Block2%nGC_sources+1
                     GC_source1=>Block2%GC_sources(Block2%nGC_sources)
 
                     GC_source1%iRank=MpiRank
                     GC_source1%iBlock=Block1%iBlock
                     GC_source1%if_yin=Block1%iBlock.le.Tree%NumLeafNodes_YinYang(1)
+                   ! if (MpiRank==0) print *,789
                 end if
+                !if (MpiRank==0) print *,222
             end do
         end do
 
@@ -122,7 +134,7 @@ Module ModCommunication
         ! Recv the iBlock messages for GC_sources
         do iRecv=1,nRecv
             call MPI_RECV(recv_message,3,mpi_integer,MPI_ANY_SOURCE,1,MPI_COMM_WORLD,status,ierr)
-            Block2=>Tree%LocalBlocks(recv_message(3)-Tree%iLeafNode_ranges(MpiRank,1)+1)
+            Block2=>Tree%LocalBlocks(recv_message(3)-ranges_of_ranks(MpiRank,1)+1)
             Block2%nGC_sources=Block2%nGC_sources+1
             GC_source1=>Block2%GC_sources(Block2%nGC_sources)
 
@@ -181,7 +193,7 @@ Module ModCommunication
                     end if
                 
                     ! Get the tag, which contains information for both the send block and receive block.
-                    tag = ModCommunication_GetTag(Tree%iLeafNode_ranges,Block1%iBlock,GC_source1%iBlock,GC_source1%iRank)
+                    tag = ModCommunication_GetTag(ranges_of_ranks,Block1%iBlock,GC_source1%iBlock,GC_source1%iRank)
 
                     call MPI_ISEND(GC_source1%primitive_list,&
                         nvar*GC_source1%nGC,mpi_real,GC_source1%iRank,tag,MPI_COMM_WORLD,request,ierr)
@@ -215,7 +227,7 @@ Module ModCommunication
                     allocate(recv_message(GC_target1%nGC,nvar))
                     !allocate(recv_message_1(GC_target1%nGC))
     
-                    tag=ModCommunication_GetTag(Tree%iLeafNode_ranges,GC_target1%iBlock,Block1%iBlock,MpiRank)
+                    tag=ModCommunication_GetTag(ranges_of_ranks,GC_target1%iBlock,Block1%iBlock,MpiRank)
 
                     call MPI_RECV(recv_message,nvar*GC_target1%nGC,mpi_real,GC_target1%iRank,tag,MPI_COMM_WORLD,status,ierr)
 

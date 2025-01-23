@@ -1,80 +1,75 @@
 Module ModAllocation
 
+    use ModParameters,only  :   MpiSize,MpiRank
+
+    integer,allocatable     ::  ranges_of_ranks(:,:)
+    integer,allocatable     ::  ranks_of_iNodes(:)
+    integer,allocatable     ::  iLocalLeafNodes(:)
+    integer                 ::  nLocalLeafNodes
+    integer                 ::  ModAllocation_status=0
+
     contains
 
-    ! Get the table including the start and end node for each rank
-
-    subroutine ModAllocation_GetTable(NumLeafNodes,iLeafNode_ranges,MpiSize)
+    subroutine ModAllocation_Init(NumLeafNodes)
         implicit none
-        integer,intent(in)          ::  NumLeafNodes            ! Num of leaf nodes   
-        integer,intent(in)          ::  MpiSize                 ! Mpi Size
-        integer,allocatable         ::  iLeafNode_ranges(:,:)   ! output
+        integer,intent(in)  ::  NumLeafNodes
+        integer             ::  iLeafNode,iRank
 
-        integer                     ::  nNodesPerRank           ! num Nodes per rank
-        integer                     ::  iLeafNodeStart,&        ! start i node
-                                        iLeafNodeEnd            ! end i node
-        integer                     ::  MpiRank                 ! MpiRank
+        allocate(ranges_of_ranks(0:MpiSize-1,2))
+        allocate(ranks_of_iNodes(NumLeafNodes))
+
+        ! Get the ranges as function of ranks
+        ! First initialize ileafnode to 1 waiting 
+        ! to be added up in the loop.
+
+        iLeafNode=1
+        do iRank=0,MpiSize-1
+            ranges_of_ranks(iRank,1)=iLeafNode
+
+            ! If iRank<mod(NumLeafNodes,MpiSize),
+            ! there should be NumLeafNodes/MpiSize+1
+            ! nodes. Otherwise just NumLeafNodes/MpiSize.
+
+            iLeafNode=iLeafNode+merge(&
+                NumLeafNodes/MpiSize+1,&
+                NumLeafNodes/MpiSize,&
+                iRank<mod(NumLeafNodes,MpiSize))
+
+            ranges_of_ranks(iRank,2)=iLeafNode-1
+        end do
+
+        ! THen get the corresponding rank of each Node.
+        ! Initialize Rank=0 then loop.
+
+        iRank=0
+        do iLeafNode=1,NumLeafNodes
+
+            ! If current iLeafNode exceed top of
+            ! current iRank's range then move
+            ! to the next one.
+
+            if (iLeafNode>ranges_of_ranks(iRank,2)) iRank=iRank+1
+            ranks_of_iNodes(iLeafNode)=iRank
+        end do
+
+        ! Then get the local iNode ranges
+        nLocalLeafNodes=ranges_of_ranks(MpiRank,2)-ranges_of_ranks(MpiRank,1)+1
+        allocate(iLocalLeafNodes(nLocalLeafNodes))
         
-        ! First allocate the table and initialize it to from -1 to -2
-        allocate(iLeafNode_ranges(0:MpiSize-1,2))
-        iLeafNode_ranges(0:MpiSize-1,1)=-1
-        iLeafNode_ranges(0:MpiSize-1,2)=-2
-
-        ! Num of nodes per rank
-        nNodesPerRank = NumLeafNodes / MpiSize
-        if (mod(NumLeafNodes,MpiSize).ne.0) nNodesPerRank = nNodesPerRank + 1
-
-        do MpiRank=0,MpiSize-1
-            iLeafNodeStart = 1 + MpiRank * nNodesPerRank
-            iLeafNodeEnd = min(nNodesPerRank + MpiRank * nNodesPerRank,NumLeafNodes)
-            iLeafNode_ranges(MpiRank,:)=[iLeafNodeStart,iLeafNodeEnd]
+        do iLeafNode=1,nLocalLeafNodes
+            iLocalLeafNodes(iLeafNode)=ranges_of_ranks(MpiRank,1)+iLeafNode-1
         end do
 
-    end subroutine ModAllocation_GetTable
+        ! The module has been initialized.
+        ModAllocation_status=1
+    end subroutine ModAllocation_Init
 
-    ! Get the nodes for this rank
-
-    subroutine ModAllocation_GetNodes(NumLeafNodes,iLeafNodes,MpiSize,MpiRank)
+    function ModAllocation_GetRank(iLeafNode) result(iRank)
         implicit none
-        integer,intent(in)          ::  NumLeafNodes            
-        integer,intent(in)          ::  MpiSize,MpiRank
-        integer,allocatable         ::  iLeafNodes(:)
-        integer                     ::  nNodesPerRank
-        integer                     ::  iLeafNodeStart,&
-                                        iLeafNodeEnd
-        integer                     ::  iLeafNodeLocal
+        integer,intent(in)  ::  iLeafNode
+        integer             ::  iRank
 
-        ! determine how many nodes are there in one rank at most
-        nNodesPerRank = NumLeafNodes / MpiSize
-        if (mod(NumLeafNodes,MpiSize).ne.0) nNodesPerRank = nNodesPerRank + 1
-
-        ! get the start and end iNodes of this rank
-        iLeafNodeStart = 1 + MpiRank * nNodesPerRank
-        iLeafNodeEnd = min(nNodesPerRank + MpiRank * nNodesPerRank,NumLeafNodes)
-
-        ! then the total length is iNodeEnd - iNodeStart + 1
-        ! so we can allocate iNodes
-        allocate(iLeafNodes(iLeafNodeEnd - iLeafNodeStart + 1))
-
-        ! fulfill iNodes
-        do iLeafNodeLocal = 1,iLeafNodeEnd - iLeafNodeStart + 1
-            iLeafNodes(iLeafNodeLocal) = iLeafNodeStart + (iLeafNodeLocal - 1)
-        end do
-    end subroutine ModAllocation_GetNodes
-
-    subroutine ModAllocation_GetRank(NumLeafNodes,iLeafNode,MpiSize,MpiRank)
-
-        implicit none
-
-        integer,intent(in)          :: NumLeafNodes
-        integer,intent(in)          :: iLeafNode,MpiSize
-        integer,intent(out)         :: MpiRank
-        integer                     :: nNodesPerRank
-
-        ! determine how many nodes are there in one rank at most
-        nNodesPerRank = NumLeafNodes / MpiSize
-        if (mod(NumLeafNodes,MpiSize).ne.0) nNodesPerRank = nNodesPerRank + 1
-        MpiRank = (iLeafNode - 1) / nNodesPerRank
-    end subroutine ModAllocation_GetRank
+        iRank=ranks_of_iNodes(iLeafNode)
+    end function ModAllocation_GetRank
 
 end module ModAllocation

@@ -5,8 +5,12 @@ module ModYinYangTree
     use ModConst,       only:   dpi
     use ModBoundary,    only:   ModBoundary_if_top_bottom
     use ModYinYang,     only:   ModYinYang_CoordConv_0D
+    use ModAllocation,  only:   ModAllocation_Init,&
+                                ranges_of_ranks,&
+                                nLocalLeafNodes,&
+                                iLocalLeafNodes
 
-    use ModAllocation
+    !use ModAllocation
 
     ! one node
     type TreeNode
@@ -21,9 +25,8 @@ module ModYinYangTree
         type(TreeNode)              ::  Yin,Yang                ! Yin & Yang Root
 
         integer                     ::  nLocalBlocks            ! number of local blocks
-        integer,allocatable         ::  iBlocksGlobal(:)        ! list for local iblocks
+        integer,allocatable         ::  iBlocks(:)              ! list for local iblocks
         type(BlockType),allocatable ::  LocalBlocks(:)          ! the local blocks of this rank
-        integer,allocatable         ::  iLeafNode_ranges(:,:)   ! the iNode table for each rank
 
         integer                     ::  NumLeafNodes            ! total number of leaf nodes     
         integer                     ::  NumLeafNodes_YinYang(2) ! n of leaf nodes in YinYang respectively 
@@ -167,12 +170,9 @@ module ModYinYangTree
     ! First Label the nodes and get total number. Do yin then Yang.
     ! Then get the local blocks and set & allocate them
 
-    subroutine YinYangTree_SetAll(Tree,MpiSize,MpiRank)
+    subroutine YinYangTree_SetAll(Tree)
         implicit none
         type(YYTree)                ::  Tree                ! Tree
-        integer,intent(in)          ::  MpiSize,MpiRank     ! MPI
-
-        integer,allocatable         ::  iLocalLeafNodes(:)  ! local nodes
         real,allocatable            ::  rtp_ranges(:,:,:)   ! of local blocks
         logical                     ::  if_yin
         integer                     ::  iLocalBlock,&       ! Local Block index
@@ -186,34 +186,32 @@ module ModYinYangTree
         call YinYangTree_LabelNodes(Tree,Tree%Yin)
         Tree%NumLeafNodes_YinYang(1)=Tree%NumLeafNodes
         call YinYangTree_LabelNodes(Tree,Tree%Yang)
-        Tree%NumLeafNodes_YinYang(2)=&
-            Tree%NumLeafNodes-Tree%NumLeafNodes_YinYang(1)
-        ! Get nodes table for each rank
-        ! and local nodes
-        !
-        call ModAllocation_GetTable(Tree%NumLeafNodes,Tree%iLeafNode_ranges,MpiSize)
-        call ModAllocation_GetNodes(Tree%NumLeafNodes,iLocalLeafNodes,MpiSize,MpiRank)
-        ! Allocate blocks and block info
-        !
-        allocate(rtp_ranges(3,2,size(iLocalLeafNodes)))
-        allocate(Tree%LocalBlocks(size(iLocalLeafNodes)))
-        allocate(Tree%iBlocksGlobal(size(iLocalLeafNodes)))
-        Tree%iBlocksGlobal=iLocalLeafNodes
-        Tree%nLocalBlocks=size(iLocalLeafNodes)
+        Tree%NumLeafNodes_YinYang(2)=Tree%NumLeafNodes-Tree%NumLeafNodes_YinYang(1)
+
+        ! Initialize ModAllocation and allocate
+        ! some arrays for the tree
+        call ModAllocation_Init(Tree%NumLeafNodes)
+        allocate(rtp_ranges(3,2,nLocalLeafNodes))
+        allocate(Tree%LocalBlocks(nLocalLeafNodes))
+        allocate(Tree%iBlocks(nLocalLeafNodes))
+        Tree%iBlocks=iLocalLeafNodes
+        Tree%nLocalBlocks=nLocalLeafNodes
+
         ! Find Blocks info
-        !
         iLocalBlock_Current=1
         call YinYangTree_GetLocalBlocksInfo(Tree,Tree%Yin ,rtp_ranges,iLocalBlock_Current)
         call YinYangTree_GetLocalBlocksInfo(Tree,Tree%Yang,rtp_ranges,iLocalBlock_Current)
+        
         ! At last initiate the blocks
-        !
         do iLocalBlock=1,size(iLocalLeafNodes)
+            
             ! decide if this block is yin or yang
-            if_yin=(Tree%iBlocksGlobal(iLocalBlock).le.Tree%NumLeafNodes_YinYang(1))
+            if_yin=(Tree%iBlocks(iLocalBlock).le.Tree%NumLeafNodes_YinYang(1))
+
             ! Initiate the Block.
             ! See if it's at the boundary (top or bottom or both)
-            call ModBlock_Init(Tree%LocalBlocks(iLocalBlock),Tree%iBlocksGlobal(iLocalBlock),&
-            rtp_ranges(:,:,iLocalBlock),if_yin=if_yin,if_ssm=.true.,if_use_actual_nvar=.true.)
+            call ModBlock_Init(Tree%LocalBlocks(iLocalBlock),Tree%iBlocks(iLocalBlock),&
+                rtp_ranges(:,:,iLocalBlock),if_yin=if_yin,if_ssm=.true.,if_use_actual_nvar=.true.)
             call ModBoundary_if_top_bottom(Tree%LocalBlocks(iLocalBlock),Tree%r_range)
         end do    
     end subroutine YinYangTree_SetAll
@@ -235,9 +233,9 @@ module ModYinYangTree
             ! if it is leaf node then label it.
             ! num plus 1.
 
-            if (Node%iLeafNode==Tree%iBlocksGlobal(iBlockLocal_Current)) then
+            if (Node%iLeafNode==Tree%iBlocks(iBlockLocal_Current)) then
                 xijk_ranges(:,:,iBlockLocal_Current)=Node%rtp_range
-                if (iBlockLocal_Current<size(Tree%iBlocksGlobal)) &
+                if (iBlockLocal_Current<size(Tree%iBlocks)) &
                     iBlockLocal_Current=iBlockLocal_Current+1
             end if
         else
