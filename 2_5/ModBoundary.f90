@@ -12,7 +12,7 @@ module ModBoundary
         type(BlockType),intent(inout)   ::  Block1              ! The input Block
         real,intent(in)                 ::  r_range(2)          ! r_range of whole tree
 
-        if (Block1%xi(ng+ng) .gt. r_range(2)) then
+        if (Block1%xi(ni+ng) .gt. r_range(2)) then
             Block1%if_top=.True.
         else
             Block1%if_top=.False.
