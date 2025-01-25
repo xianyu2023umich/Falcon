@@ -28,42 +28,31 @@ module ModBoundary
 
     subroutine ModBoundary_Dynamo_HD_primitives(Block1,if_rk)
         implicit none
-        type(BlockType),intent(inout)   ::  Block1
+        type(BlockType),target          ::  Block1
         logical,intent(in)              ::  if_rk
+        real,pointer                    ::  primitive(:,:,:,:)
         integer                         ::  i
 
+        ! Assign the pointer
         if (if_rk) then
-            if (Block1%if_top) then
-                do i=ng+1,ng+ng
-                    Block1%primitive_rk(i,:,:,[1,3,4])=(Block1%primitive_rk(2*ng+1-i,:,:,[1,3,4]))
-                    Block1%primitive_rk(i,:,:,2)=-Block1%primitive_rk(2*ng+1-i,:,:,2)
-                    Block1%primitive_rk(i,:,:,5)=-Block1%primitive_rk(2*ng+1-i,:,:,5)
-                end do
-            end if
-            if (Block1%if_bottom) then
-                do i=-ng+1,0
-                    Block1%primitive_rk(i,:,:,[1,3,4])=(Block1%primitive_rk(1-i,:,:,[1,3,4]))
-                    Block1%primitive_rk(i,:,:,2)=-Block1%primitive_rk(1-i,:,:,2)
-                    Block1%primitive_rk(i,:,:,5)=-Block1%primitive_rk(1-i,:,:,5)
-                end do
-            end if
+            primitive=>Block1%primitive_rk
         else
-            if (Block1%if_top) then
-                do i=ng+1,ng+ng
-                    Block1%primitive(i,:,:,[1,3,4])=(Block1%primitive(2*ng+1-i,:,:,[1,3,4]))
-                    Block1%primitive(i,:,:,2)=-Block1%primitive(2*ng+1-i,:,:,2)
-                    Block1%primitive(i,:,:,5)=-Block1%primitive(2*ng+1-i,:,:,5)
-                end do
-            end if
-            if (Block1%if_bottom) then
-                do i=-ng+1,0
-                    Block1%primitive(i,:,:,[1,3,4])=(Block1%primitive(1-i,:,:,[1,3,4]))
-                    Block1%primitive(i,:,:,2)=-Block1%primitive(1-i,:,:,2)
-                    Block1%primitive(i,:,:,5)=-Block1%primitive(1-i,:,:,5)
-                end do
-            end if
+            primitive=>Block1%primitive
         end if
-        
+
+        ! Set boundary condition
+        if (Block1%if_top) then
+            do i=ni+1,ni+ng
+                primitive(i,:,:,[1,3,4,5])=primitive(2*ni+1-i,:,:,[1,3,4,5])
+                primitive(i,:,:,2)=-primitive(2*ni+1-i,:,:,2)
+            end do
+        end if
+        if (Block1%if_bottom) then
+            do i=-ng+1,0
+                primitive(i,:,:,[1,3,4,5])=primitive(1-i,:,:,[1,3,4,5])
+                primitive(i,:,:,2)=-primitive(1-i,:,:,2)
+            end do
+        end if
     end subroutine ModBoundary_Dynamo_HD_primitives
     
     subroutine ModBoundary_Dynamo_HD_p1(Block1)
