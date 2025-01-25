@@ -265,7 +265,6 @@ module ModSavePlot
                 (Block1%xi(-ng+1)-rtp(1))*(Block1%xi(ng+ni)-rtp(1)).le.0.0) then
 
                 if_inside_single=.true.
-                print *,123
                 
                 rtp_posi(1)=-ng+1.+(rtp(1)-Block1%xi(-ng+1))/Block1%dxi
                 rtp_posi(2)=-ng+1.+(rtp(2)-Block1%xj(-ng+1))/Block1%dxj
