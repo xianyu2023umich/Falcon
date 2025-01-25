@@ -3,7 +3,7 @@ program test1
     use ModCommunication,   only:   ModCommunication_SetGCAll
     use ModAMR,             only:   ModAMR_set_grid
     use ModCheck,           only:   ModCheck_primitive
-    use ModSavePlot,        only:   ModSave_Globe
+    use ModSavePlot,        only:   ModSave_Globe,ModSave_Fan
     use ModAdvance,         only:   ModAdvance_rk4,&
                                     ModAdvance_CommunicateAll
     use ModParameters,      only:   MpiSize,MpiRank,r_range,&
@@ -44,7 +44,7 @@ program test1
 
     ! Initiate the tree and set GC
     call test1_INITIATION
-    !call test_harmonic
+    !call ModInitiation_harmonic(Tree)
     !call ModSave_Globe(Tree,rSave,[nthSavePlot,nphSavePlot],filename='00000000.dat',logical_unit=2)
 
     ! Start the main loop !
@@ -64,7 +64,8 @@ program test1
                 
 
                 do i=1,len_trim(iStep_char); if (iStep_char(i:i)==' ') iStep_char(i:i)='0'; end do
-                call ModSave_Globe(Tree,rSave,[nthSavePlot,nphSavePlot],filename=iStep_char//'.dat',logical_unit=2)
+                call ModSave_Globe(Tree,rSave,[nthSavePlot,nphSavePlot],filename='r_'//iStep_char//'.dat',logical_unit=2)
+                call ModSave_Fan(Tree,0.0,[100,300],filename='ph_'//iStep_char//'.dat',logical_unit=2)
             end if
 
             ! Check if there is NaN
