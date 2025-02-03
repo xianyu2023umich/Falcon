@@ -3,37 +3,60 @@
 0.96            r_range(2)
 
 #GRID
-24              ni
-48              nj
-144              nk
+4              ni
+12              nj
+36              nk
 2               ng
 
 #ARTIFICIALCOOLING
 0.96            rmax
 scale           type_dc
 
+5.4e-2
+
 #MODELS
 1.0e-6          ModelS_delta
-1.8e5           ModelS_c_sound__CGS
-'/Users/qplazmfree/Documents/research/data/ModelS/0.7_1.0.dat'
+0.6e5           ModelS_c_sound__CGS
+0.7_1.0.dat
 
 #AMR
-1               AMR_nLevels
-T F F
+7               AMR_nLevels
+T T T
 0.7
+1.0
+T T T
+0.7
+1.0
+T T T
+0.83
+1.0
+T T T
+0.90
+1.0
+T T T
+0.93
+1.0
+T F F
+0.945
+1.0
+T F F
+0.945
 1.0
 
 #SAVEPLOT
-1000              nStepsSavePlot
-0.89            rSave
-180             nthSavePlot
-360             nphSavePlot
+200              nStepsSavePlot
+0.95            rSave
+360             nthSavePlot
+720             nphSavePlot
 
 #TIMESTEPPING
-0.5             CFL
+0.8             CFL
 
 #STOP
-20000             nSteps
+30000             nSteps
 
 #HEATING
-0.001           ModelS_heating_ratio
+1.0           ModelS_heating_ratio
+
+#EQUATION
+hd             MHD or HD
