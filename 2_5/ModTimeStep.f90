@@ -3,6 +3,7 @@ module ModTimeStep
     use ModBlock,       only:   BlockType
     use ModYinYangTree, only:   YYTree
     use ModParameters,  only:   ModelS_delta
+    use ModVariables,   only:   vr_,vt_,vp_,br_,bt_,bp_
 
     contains
 
@@ -38,7 +39,7 @@ module ModTimeStep
         select case(geometry)
         case('spherical')
             dt_adv = min(Block1%dxi,Block1%dxj*minval(Block1%xi),Block1%dxk*minval(Block1%xi))/&
-                (maxval(abs(Block1%primitive(:,:,:,2:4)))+&
+                (maxval(abs(Block1%primitive(:,:,:,vr_:vp_)))+&
                  maxval(1./Block1%Xi_rsst(:,1,1)*sqrt(Block1%Gamma1_list/ModelS_delta*Block1%p0_list/Block1%rho0_list)))
 
             dt = CFL_ad * dt_adv

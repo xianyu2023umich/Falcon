@@ -9,7 +9,8 @@ module ModEquation
     use ModBoundary,    only:   ModBoundary_Dynamo_HD_primitives,&
                                 ModBoundary_Dynamo_HD_p1
     use ModDiffusion,   only:   ModDiffusion_Aritificial_1
-    use ModParameters,  only:   ni,nj,nk,ng,ModelS_delta,ModelS_heating_ratio
+    use ModParameters,  only:   ni,nj,nk,ng,nvar,ModelS_delta,ModelS_heating_ratio
+    use ModVariables,   only:   rho1_,vr_,vt_,vp_,br_,bt_,bp_,s1_
 
     contains 
 
@@ -19,9 +20,9 @@ module ModEquation
         type(BlockType),target      ::  Block1                      
         logical,intent(in)          ::  if_rk
         real,pointer                ::  primitive(:,:,:,:)
-        integer                     ::  direction
-        real,intent(out)            ::  EQN_update_R(1:ni,1:nj,1:nk,1:5)
-        real                        ::  tmp(-ng+1:ng+ni,-ng+1:ng+nj,-ng+1:ng+nk,3)
+        integer                     ::  ivar
+        real,intent(out)            ::  EQN_update_R(1:ni,1:nj,1:nk,1:nvar)
+        real                        ::  tmp(-ng+1:ng+ni,-ng+1:ng+nj,-ng+1:ng+nk,vr_:vp_)
         
         ! If_rk
         if (if_rk) then
@@ -34,47 +35,47 @@ module ModEquation
         ! Get m; Set R=0.; Set p1; Set Boundary.
         EQN_update_R=0.
         
-        Block1%p1=Block1%Gamma1*Block1%p0_over_rho0*primitive(:,:,:,1)+&
-            Block1%Gamma3_minus_1*Block1%rho0T0*primitive(:,:,:,5)
+        Block1%p1=Block1%Gamma1*Block1%p0_over_rho0*primitive(:,:,:,rho1_)+&
+            Block1%Gamma3_minus_1*Block1%rho0T0*primitive(:,:,:,s1_)
 
         call ModBoundary_Dynamo_HD_primitives(Block1,if_rk)
         !call ModBoundary_Dynamo_HD_p1(Block1)
         
-        ! EQN 1
-        do direction=1,3
-            tmp(:,:,:,direction)=Block1%rho0*primitive(:,:,:,direction+1)
+        ! EQN rho1_
+        do ivar=vr_,vp_
+            tmp(:,:,:,ivar)=Block1%rho0*primitive(:,:,:,ivar)
         end do
-        EQN_update_R(:,:,:,1)=-1.0/(Block1%Xi_rsst(1:ni,1:nj,1:nk)**2*ModelS_delta)*&
+        EQN_update_R(:,:,:,rho1_)=-1.0/(Block1%Xi_rsst(1:ni,1:nj,1:nk)**2*ModelS_delta)*&
             ModSpherical_div(ni,nj,nk,ng,Block1%xi,Block1%xj,Block1%dxi,Block1%dxj,Block1%dxk,tmp)
         
-        ! EQN 2-4 Inertial Force
-        EQN_update_R(:,:,:,2:4)=-&
+        ! EQN vr_:vp_ Inertial Force
+        EQN_update_R(:,:,:,vr_:vp_)=-&
             ModSpherical_A_dot_nabla_B(ni,nj,nk,ng,&
             Block1%xi,Block1%xj,Block1%dxi,Block1%dxj,Block1%dxk,&
-            primitive(:,:,:,2:4),primitive(:,:,:,2:4))
+            primitive(:,:,:,vr_:vp_),primitive(:,:,:,vr_:vp_))
         
-        ! EQN 2-4 pressure gradient
+        ! EQN vr_:vp_ pressure gradient
         tmp(1:ni,1:nj,1:nk,:)=&
             ModSpherical_Grad_f(ni,nj,nk,ng,&
             Block1%xi,Block1%xj,Block1%dxi,Block1%dxj,Block1%dxk,Block1%p1)
-        do direction=1,3
-            EQN_update_R(:,:,:,direction+1)=EQN_update_R(:,:,:,direction+1)-&
-                tmp(1:ni,1:nj,1:nk,direction)/&
+        do ivar=vr_,vp_
+            EQN_update_R(:,:,:,ivar)=EQN_update_R(:,:,:,ivar)-&
+                tmp(1:ni,1:nj,1:nk,ivar)/&
                 Block1%rho0(1:ni,1:nj,1:nk)
         end do
         
-        ! EQN 2 Gravity
-        EQN_update_R(:,:,:,2)=EQN_update_R(:,:,:,2)-&
-            Block1%g_over_rho0*primitive(1:ni,1:nj,1:nk,1)
+        ! EQN vr Gravity
+        EQN_update_R(:,:,:,vr_)=EQN_update_R(:,:,:,vr_)-&
+            Block1%g_over_rho0*primitive(1:ni,1:nj,1:nk,rho1_)
 
-        ! EQN5 advection term of s1
-        EQN_update_R(:,:,:,5)=-&
+        ! EQN s1_ advection term of s1
+        EQN_update_R(:,:,:,s1_)=-&
             ModSpherical_A_dot_Grad_f(ni,nj,nk,ng,&
             Block1%xi,Block1%xj,Block1%dxi,Block1%dxj,Block1%dxk,&
-            primitive(:,:,:,2:4),primitive(:,:,:,5))
+            primitive(:,:,:,vr_:vp_),primitive(:,:,:,s1_))
         
-        ! EQN5 heating
-        EQN_update_R(:,:,:,5)=EQN_update_R(:,:,:,5)+&
+        ! EQN s1_ heating
+        EQN_update_R(:,:,:,s1_)=EQN_update_R(:,:,:,s1_)+&
             ModelS_heating_ratio*(Block1%total_heat(1:ni,1:nj,1:nk))/Block1%rho0T0(1:ni,1:nj,1:nk)
 
         ! Aritificial diffusion

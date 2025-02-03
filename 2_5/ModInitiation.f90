@@ -7,6 +7,7 @@ module ModInitiation
     use ModParameters,  only:   r_range,ni,nj,nk,ng,&
                                 rSave,nthSavePlot,nphSavePlot
     use ModConst,       only:   dpi
+    use ModVariables,   only:   vr_,vt_,vp_
     contains
 
     subroutine ModInitiation_harmonic(Tree)
@@ -26,9 +27,9 @@ module ModInitiation
                 if (.not. Block1%if_yin) coord=ModYinyang_CoordConv_0D(coord)
                 vec=sin(dpi*(coord(1)-r_range(1))/(r_range(2)-r_range(1)))*[1.,1.,1.]*1.e-2*&
                     sin(dpi*4.*coord(3))*sin(coord(2))**4
-                Block1%primitive(ir,it,ip,2:4)=vec
+                Block1%primitive(ir,it,ip,vr_:vp_)=vec
                 if (.not. Block1%if_yin) then
-                    Block1%primitive(ir,it,ip,2:4)=&
+                    Block1%primitive(ir,it,ip,vr_:vp_)=&
                     ModYinYang_VecConv_0D(coord,vec)
                 end if
             end do; end do; end do

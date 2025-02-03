@@ -4,8 +4,8 @@ GFORTRAN = gfortran -Wall -Wextra -g -O3
 # the objects for test1
 
 MPIOBJ = ModCommunication.o ModAdvance.o ModSavePlot.o
-GFORTRANOBJ = 	ModParameters.o ModYinYang.o ModConst.o ModAllocation.o	ModMath.o ModDerivative.o  \
-				ModStratification.o ModControl.o ModSSM.o ModSpherical.o ModBlock.o \
+GFORTRANOBJ = 	ModVariables.o ModParameters.o ModYinYang.o ModConst.o ModAllocation.o	ModMath.o   \
+				ModDerivative.o ModStratification.o ModControl.o ModSSM.o ModSpherical.o ModBlock.o \
 				ModBoundary.o ModYinYangTree.o ModLinReconstruct.o ModDiffusion.o ModEquation.o	ModGC.o \
 				ModTimeStep.o ModAMR.o ModReadParameters.o ModCheck.o ModInitiation.o
 
@@ -19,7 +19,7 @@ MPISRC = ModCommunication.f90 ModAdvance.f90 ModSavePlot.f90
 GFORTRANSRC = ModAllocation.f90 ModBlock.f90 ModBoundary.f90 ModDerivative.f90 \
               ModEquation.f90 ModGC.f90 ModMath.f90 ModOcTree.f90 ModParameter.f90 \
               ModStratification.f90 ModSSM.f90 ModTimeStep.f90 ModVariable.f90 \
-			  ModInitiation.f90
+			  ModInitiation.f90 ModVariables.f90
 PROGRAM = test1.f90
 TEST2_PROGRAM = test2.f90
 

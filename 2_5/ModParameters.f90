@@ -25,5 +25,7 @@ module ModParameters
     real                ::      rSave
 
     integer             ::      nSteps                      !   Total n of steps
-    real                ::      CFL        
+    real                ::      CFL
+
+    character(len=100)  ::      NameEquation="HD"
 end module ModParameters

@@ -7,6 +7,7 @@ module ModSavePlot
     use ModYinYangTree, only:   YYTree
     use ModConst,       only:   dpi
     use ModParameters,  only:   nvar,ni,nj,nk,ng,r_range
+    use ModVariables,   only:   vr_,vt_,vp_,br_,bt_,bp_
     use MPI
 
     contains
@@ -143,8 +144,8 @@ module ModSavePlot
                         Block1%primitive(rtp_posi_int(1)+1,rtp_posi_int(2)+1,rtp_posi_int(3)+1,:)*&
                         (   rtp_weight(1))*(   rtp_weight(2))*(   rtp_weight(3))
                     
-                    if (.not. Block1%if_yin) save_primitive(2:4,it,ip)=&
-                        ModYinYang_VecConv_0D(rtp,save_primitive(2:4,it,ip))
+                    if (.not. Block1%if_yin) save_primitive(vr_:vp_,it,ip)=&
+                        ModYinYang_VecConv_0D(rtp,save_primitive(vr_:vp_,it,ip))
                     
                     !if (abs(save_primitive(3,it,ip)-1.0)>0.05) then
                     !    print *,'================'
@@ -291,8 +292,8 @@ module ModSavePlot
                     Block1%primitive(rtp_posi_int(1)+1,rtp_posi_int(2)+1,rtp_posi_int(3)+1,:)*&
                     (   rtp_weight(1))*(   rtp_weight(2))*(   rtp_weight(3))
                 
-                if (.not. Block1%if_yin) save_primitive(2:4,ir,it)=&
-                    ModYinYang_VecConv_0D(rtp,save_primitive(2:4,ir,it))
+                if (.not. Block1%if_yin) save_primitive(vr_:vp_,ir,it)=&
+                    ModYinYang_VecConv_0D(rtp,save_primitive(vr_:vp_,ir,it))
             
             end if
         end do; end do

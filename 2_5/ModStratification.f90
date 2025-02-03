@@ -3,6 +3,10 @@ Module ModStratification
     use ModConst,       only:   speed_c__CGS,rad_a__CGS,R_sun__CGS
     use ModParameters,  only:   ModelS_delta,ModelS_c_sound__CGS,ModelS_rmax,&
                                 ModelS_dc_type,ModelS_dc_rmax
+    use ModVariables,   only:   x__bar,t__bar,v__bar,&
+                                rho1__bar,rho0__bar,g__bar,&
+                                p1__bar,p0__bar,&
+                                T0__bar,s1__bar,heat__bar
 
     implicit none
 
@@ -21,14 +25,6 @@ Module ModStratification
                                 ModelS_Diffusion_list__CGS(:),&
                                 ModelS_cooling_list__CGS(:),&
                                 ModelS_Xi_list(:)    
-
-    ! Variable scales.
-
-    real                ::      x__bar,t__bar,v__bar,&
-                                rho1__bar,rho0__bar,g__bar,&
-                                p1__bar,p0__bar,&
-                                T0__bar,s1__bar,heat__bar
-
     contains
 
     subroutine ModStratification_DoAll(filename)

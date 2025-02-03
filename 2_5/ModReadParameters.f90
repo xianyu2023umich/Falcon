@@ -4,9 +4,10 @@ module ModReadParameters
                                     ModelS_delta,ModelS_c_sound__CGS,&
                                     ModelS_rmax,ModelS_dc_type,ModelS_dc_rmax,ModelS_filename,&
                                     nStepsSavePlot,nthSavePlot,nphSavePlot,nSteps,rSave,CFL,&
-                                    ModelS_heating_ratio
+                                    ModelS_heating_ratio,NameEquation
     use ModStratification,  only:   ModStratification_DoAll
     use ModAMR,             only:   AMR_nLevels,AMR_r_ranges,AMR_rtp_if_divide
+    use ModVariables,       only:   rho1_,vr_,vt_,vp_,br_,bt_,bp_,s1_
 
     contains
 
@@ -209,7 +210,28 @@ module ModReadParameters
                         write(*,*) "Error from ",name_sub,": Error reading ModelS_heating_ratio"
                         stop 1
                     end if
-                    
+
+                case("#EQUATION")
+                    read(logical_unit, *, iostat=ios) NameEquation
+                    select case(NameEquation)
+                    case("MHD","mhd")
+                        nvar=8
+                        rho1_=1
+                        vr_=2
+                        vt_=3
+                        vp_=4
+                        br_=5
+                        bt_=6
+                        bp_=7
+                        s1_=8
+                    case("HD","hd")
+                        nvar=5
+                        rho1_=1
+                        vr_=2
+                        vt_=3
+                        vp_=4
+                        s1_=5
+                    end select
                 end select
             end if
         end do

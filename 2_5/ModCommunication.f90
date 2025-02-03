@@ -11,6 +11,7 @@ Module ModCommunication
     use ModParameters,  only:   MpiSize,MpiRank,&
                                 ni,nj,nk,ng,nvar
     use ModAllocation,  only:   ranges_of_ranks
+    use ModVariables,   only:   vr_,vt_,vp_
     use MPI
 
     contains
@@ -188,8 +189,8 @@ Module ModCommunication
                 
                     ! If different if_yin then convert
                     if (Block1%if_yin .neqv. GC_source1%if_yin) then
-                        GC_source1%primitive_list(:,2:4)=&
-                            ModYinYang_VecConv_1D(GC_source1%xijk_list,GC_source1%primitive_list(:,2:4),GC_source1%nGC)
+                        GC_source1%primitive_list(:,vr_:vp_)=&
+                            ModYinYang_VecConv_1D(GC_source1%xijk_list,GC_source1%primitive_list(:,vr_:vp_),GC_source1%nGC)
                     end if
                 
                     ! Get the tag, which contains information for both the send block and receive block.
