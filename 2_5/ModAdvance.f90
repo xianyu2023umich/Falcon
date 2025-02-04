@@ -43,9 +43,7 @@ module ModAdvance
             ! loop all the blocks
             do rk_index=1,4
                 do iLocalBlock=1,size(Tree%LocalBlocks)
-                    ! assign block pointer and see if it's at top or bottom.
                     Block1=>Tree%LocalBlocks(iLocalBlock)
-                    !if (Block1%iBlock==6) print *,Block1%primitive_rk(32,-1:3,1,3)
                     
                     ! Decide if rk or ot for the input and output primitives
                     if_rk_input=(rk_index>1)
@@ -65,6 +63,19 @@ module ModAdvance
                 end do
                 call ModAdvance_CommunicateAll(Tree,if_rk_output)
             end do
+
+            ! Do the artificial diffusion after the rk loop
+
+            do iLocalBlock=1,size(Tree%LocalBlocks)
+                Block1=>Tree%LocalBlocks(iLocalBlock)
+
+                ! Initialize E and get it
+                EQN_update_R=0.0
+                call ModDiffusion_Aritificial_1(Block1,EQN_update_R,2,.false.)
+                Block1%primitive(1:ni,1:nj,1:nk,:)=&
+                    Block1%primitive(1:ni,1:nj,1:nk,:)+dt*EQN_update_R
+            end do
+            call ModAdvance_CommunicateAll(Tree,.false.)
         else
         end if
     end subroutine ModAdvance_rk4
