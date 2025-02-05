@@ -1,12 +1,16 @@
 module ModAdvance
 
-    use ieee_arithmetic
-    use ModEquation
-    use ModGC
-    use ModBoundary
-    use ModTimeStep
-    use ModCommunication
-    use ModParameters,  only:   ni,nj,nk,nvar
+    use ModBlock,           only:   BlockType
+    use ModYinYangTree,     only:   YYTree
+    use ModEquation,        only:   ModEquation_Dynamo_MHD,&
+                                    ModEquation_Dynamo_HD
+    use ModGC,              only:   ModGC_CommunicateGCLocal
+    use ModDiffusion,       only:   ModDiffusion_Aritificial_1
+    use ModTimeStep,        only:   ModTimeStep_Dynamo_HD
+    use ModCommunication,   only:   ModCommunication_SendRecvGCAll,&
+                                    ModCommunication_GlobalTimeStep
+    use ModParameters,      only:   ni,nj,nk,nvar
+    use ModVariables,       only:   vr_,vt_,vp_,br_,bt_,bp_
 
     contains
 
