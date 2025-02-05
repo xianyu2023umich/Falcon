@@ -78,7 +78,11 @@ Module ModGC
                         !print *,primitive_GC(1,2:4)
                         primitive_GC(:,vr_:vp_)=&
                             ModYinYang_VecConv_1D(ModYinYang_CoordConv_1D(GC_target1%xijk_list,GC_target1%nGC),&
-                                primitive_GC(:,vr_:vp_),GC_target1%nGC)
+                            primitive_GC(:,vr_:vp_),GC_target1%nGC)
+                        
+                        if (br_>0) primitive_GC(:,br_:bp_)=&
+                            ModYinYang_VecConv_1D(ModYinYang_CoordConv_1D(GC_target1%xijk_list,GC_target1%nGC),&
+                            primitive_GC(:,br_:bp_),GC_target1%nGC)
                         !print *,primitive_GC(1,2:4)
                         !print *,11,Block_target%if_yin
                     end if

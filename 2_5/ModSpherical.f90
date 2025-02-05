@@ -4,11 +4,78 @@ module ModSpherical
 
     contains
 
+    function ModSpherical_cross(nr,nt,np,ng,A,B) result(C)
+        implicit none
+        integer,intent(in)          ::  nr,nt,np,ng
+        real,intent(in)             ::  A(-ng+1:nr+ng,-ng+1:nt+ng,-ng+1:np+ng,3),&
+                                        B(-ng+1:nr+ng,-ng+1:nt+ng,-ng+1:np+ng,3)
+        real                        ::  C(-ng+1:nr+ng,-ng+1:nt+ng,-ng+1:np+ng,3)
+
+        C(:,:,:,1)=A(:,:,:,2)*B(:,:,:,3)-A(:,:,:,3)*B(:,:,:,2)
+        C(:,:,:,2)=A(:,:,:,3)*B(:,:,:,1)-A(:,:,:,1)*B(:,:,:,3)
+        C(:,:,:,3)=A(:,:,:,1)*B(:,:,:,2)-A(:,:,:,2)*B(:,:,:,1)
+    end function ModSpherical_cross
+
+    function ModSpherical_curl(nr,nt,np,ng,r,t,dr,dt,dp,A) result(curl_A)
+        implicit none
+        integer,intent(in)          ::  nr,nt,np,ng
+        real,intent(in)             ::  r(-ng+1:ng+nr),t(-ng+1:ng+nt)
+        real,intent(in)             ::  dr,dt,dp
+        real,intent(in)             ::  A(-ng+1:ng+nr,-ng+1:ng+nt,-ng+1:ng+np,1:3)
+        real                        ::  At_r(-ng+1:ng+nr,-ng+1:ng+nt,-ng+1:ng+np)
+        real                        ::  Ap_r(-ng+1:ng+nr,-ng+1:ng+nt,-ng+1:ng+np)
+        real                        ::  Ar_sint(-ng+1:ng+nr,-ng+1:ng+nt,-ng+1:ng+np)
+        real                        ::  Ap_sint(-ng+1:ng+nr,-ng+1:ng+nt,-ng+1:ng+np)
+        real                        ::  sint(-ng+1:ng+nt),r_inverse(1:nr),sint_inverse(1:nt)
+        real                        ::  curl_A(1:nr,1:nt,1:np,1:3)
+        integer                     ::  ir,it,ip,idirection
+
+        ! Preparations
+        sint=sin(t)
+        r_inverse=1./r(1:nr)
+        sint_inverse=1./sint(1:nt)
+
+        ! Get scaled Ap_sint, Ap_r, At_r
+        do ip=-ng+1,ng+np; do it=-ng+1,ng+nt
+            At_r(:,it,ip)=A(:,it,ip,2)*r
+            Ap_r(:,it,ip)=A(:,it,ip,3)*r
+        end do; end do
+
+        do ip=-ng+1,ng+np; do ir=-ng+1,ng+nr
+            Ar_sint(ir,:,ip)=A(ir,:,ip,1)*sint
+            Ap_sint(ir,:,ip)=A(ir,:,ip,3)*sint
+        end do; end do
+
+        ! Get the derivatives
+        ! r component
+        curl_A(:,:,:,1)                                                 &
+            =   ModDerivative_1st_O4_3D(Ap_sint,nr,nt,np,ng,dr,dt,dp,2) &
+            -   ModDerivative_1st_O4_3D(A(:,:,:,2),nr,nt,np,ng,dr,dt,dp,3)
+        
+        ! th component
+        curl_A(:,:,:,2)                                                 &
+            =   ModDerivative_1st_O4_3D(Ar_sint,nr,nt,np,ng,dr,dt,dp,3) &
+            -   ModDerivative_1st_O4_3D(Ap_r,nr,nt,np,ng,dr,dt,dp,1)
+        
+        ! ph component
+        curl_A(:,:,:,3)                                                 &
+            =   ModDerivative_1st_O4_3D(At_r,nr,nt,np,ng,dr,dt,dp,1)    &
+            -   ModDerivative_1st_O4_3D(A(:,:,:,1),nr,nt,np,ng,dr,dt,dp,2)
+
+        ! Rescale
+        do idirection=1,3; do ip=1,np; do it=1,nt
+            curl_A(:,it,ip,idirection)=curl_A(:,it,ip,idirection)*r_inverse
+        end do; end do; end do
+
+        do ip=1,np; do ir=1,nr
+            curl_A(ir,:,ip,1)=curl_A(ir,:,ip,1)*sint_inverse
+        end do; end do
+    end function ModSpherical_curl
+
     function ModSpherical_div(nr,nt,np,ng,r,t,dr,dt,dp,A) result(div_A)
         implicit none
         integer,intent(in)          ::  nr,nt,np,ng
-        real,intent(in)             ::  r(-ng+1:ng+nr),&
-                                        t(-ng+1:ng+nt)
+        real,intent(in)             ::  r(-ng+1:ng+nr),t(-ng+1:ng+nt)
         real,intent(in)             ::  dr,dt,dp
         real,intent(in)             ::  A(-ng+1:ng+nr,-ng+1:ng+nt,-ng+1:ng+np,1:3)
         real                        ::  A_scaled(-ng+1:ng+nr,-ng+1:ng+nt,-ng+1:ng+np,1:2)

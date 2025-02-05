@@ -15,7 +15,7 @@ module ModVariables
     
     real                ::      x__bar,t__bar,v__bar,&
                                 rho1__bar,rho0__bar,g__bar,&
-                                p1__bar,p0__bar,&
-                                T0__bar,s1__bar,heat__bar
+                                p1__bar,p0__bar,T0__bar,&
+                                s1__bar,heat__bar,B__bar
 
 end module ModVariables

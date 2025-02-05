@@ -50,7 +50,12 @@ module ModAdvance
                     if_rk_output=(rk_index<4)
 
                     ! Get the EQN_update_R
-                    call ModEquation_Dynamo_HD(Block1,if_rk_input,EQN_update_R)
+                    if (br_>0) then
+                        call ModEquation_Dynamo_MHD(Block1,if_rk_input,EQN_update_R)
+                    else
+                        call ModEquation_Dynamo_HD(Block1,if_rk_input,EQN_update_R)
+                    end if
+
 
                     ! Get the next RK
                     if (if_rk_output) then

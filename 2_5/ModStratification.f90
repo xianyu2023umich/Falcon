@@ -1,12 +1,12 @@
 Module ModStratification
 
-    use ModConst,       only:   speed_c__CGS,rad_a__CGS,R_sun__CGS
+    use ModConst,       only:   dpi,speed_c__CGS,rad_a__CGS,R_sun__CGS
     use ModParameters,  only:   ModelS_delta,ModelS_c_sound__CGS,ModelS_rmax,&
                                 ModelS_dc_type,ModelS_dc_rmax
     use ModVariables,   only:   x__bar,t__bar,v__bar,&
                                 rho1__bar,rho0__bar,g__bar,&
-                                p1__bar,p0__bar,&
-                                T0__bar,s1__bar,heat__bar
+                                p1__bar,p0__bar,T0__bar,&
+                                s1__bar,heat__bar,B__bar
 
     implicit none
 
@@ -272,6 +272,7 @@ Module ModStratification
         T0__bar     =10.0**ModelS_log_T0_list(1)
         s1__bar     =p1__bar/(rho0__bar*T0__bar)
         heat__bar   =rho0__bar*T0__bar*s1__bar/t__bar
+        B__bar       =sqrt(4.0*dpi*rho0__bar)
         !print *,ModelS_delta,x__bar,v__bar,t__bar,rho0__bar,rho1__bar,g__bar,p0__bar,p1__bar,T0__bar,s1__bar,heat__bar
         
     end subroutine ModStratification_set_scales
