@@ -272,7 +272,7 @@ Module ModStratification
         T0__bar     =10.0**ModelS_log_T0_list(1)
         s1__bar     =p1__bar/(rho0__bar*T0__bar)
         heat__bar   =rho0__bar*T0__bar*s1__bar/t__bar
-        B__bar       =sqrt(4.0*dpi*rho0__bar)
+        B__bar       =sqrt(4.0*dpi*rho0__bar*v__bar)
         !print *,ModelS_delta,x__bar,v__bar,t__bar,rho0__bar,rho1__bar,g__bar,p0__bar,p1__bar,T0__bar,s1__bar,heat__bar
         
     end subroutine ModStratification_set_scales

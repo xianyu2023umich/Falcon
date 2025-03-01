@@ -6,7 +6,7 @@ module ModAdvance
                                     ModEquation_Dynamo_HD
     use ModGC,              only:   ModGC_CommunicateGCLocal
     use ModDiffusion,       only:   ModDiffusion_Aritificial_1
-    use ModTimeStep,        only:   ModTimeStep_Dynamo_HD
+    use ModTimeStep,        only:   ModTimeStep_Dynamo_HD,ModTimeStep_Dynamo_MHD
     use ModCommunication,   only:   ModCommunication_SendRecvGCAll,&
                                     ModCommunication_GlobalTimeStep
     use ModParameters,      only:   ni,nj,nk,nvar
@@ -29,7 +29,11 @@ module ModAdvance
         real                                ::  dt_local,dt                 ! dt
         !integer :: i,j,k
 
-        call ModTimeStep_Dynamo_HD(Tree,CFL_ad,dt_local)
+        if (br_>0) then
+            call ModTimeStep_Dynamo_MHD(Tree,CFL_ad,dt_local)
+        else
+            call ModTimeStep_Dynamo_HD(Tree,CFL_ad,dt_local)
+        end if
         call ModCommunication_GlobalTimeStep(dt_local,dt)
           
         ! see if all the local blocks in the tree

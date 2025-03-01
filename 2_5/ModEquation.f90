@@ -80,8 +80,7 @@ module ModEquation
         EQN_update_R(:,:,:,s1_)=EQN_update_R(:,:,:,s1_)+&
             ModelS_heating_ratio*(Block1%total_heat(1:ni,1:nj,1:nk))/Block1%rho0T0(1:ni,1:nj,1:nk)
 
-        ! Aritificial diffusion
-        ! call ModDiffusion_Aritificial_1(Block1,EQN_update_R,2,if_rk)
+        
     end subroutine ModEquation_Dynamo_HD
 
     subroutine ModEquation_Dynamo_MHD(Block1,if_rk,EQN_update_R)

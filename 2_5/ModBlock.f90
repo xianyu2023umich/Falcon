@@ -49,6 +49,8 @@ module ModBlock
         real,allocatable            ::  p1(:,:,:)
         real,allocatable            ::  Xi_rsst(:,:,:)
 
+        real,allocatable            ::  v_wave(:,:,:)
+
         ! This is important:
         ! GC_sources only contain those in the other ranks
         ! for those in the same rank no need to store it.
@@ -185,6 +187,9 @@ module ModBlock
         allocate(Block1%p1             (-ng+1:ni+ng,-ng+1:nj+ng,-ng+1:nk+ng))
         allocate(Block1%Xi_rsst        (-ng+1:ni+ng,-ng+1:nj+ng,-ng+1:nk+ng))
 
+        ! Allocate wave speed array
+        allocate(Block1%v_wave         (-ng+1:ni+ng,-ng+1:nj+ng,-ng+1:nk+ng))
+
         ! Get the 1D profiles
         do i=-ng+1,ni+ng
             call ModStratification_get_vars(Block1%xi(i),&
@@ -268,6 +273,7 @@ module ModBlock
         if (allocated(Block1%diffusion_list))   deallocate(Block1%diffusion_list)
         if (allocated(Block1%cooling_list))     deallocate(Block1%cooling_list)
         if (allocated(Block1%p1))               deallocate(Block1%p1)
+        if (allocated(Block1%v_wave))           deallocate(Block1%v_wave)
     end subroutine ModBlock_deallocate
 
 end module ModBlock
