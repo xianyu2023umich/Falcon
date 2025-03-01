@@ -18,6 +18,7 @@ module ModTimeStep
 
         ! Initialize dt to be very big
         dt=1.e20
+        dt1=1.e20
 
         ! Loop all the blocks to get minimum dt.
         do iBlock=1,size(Tree%LocalBlocks) 
@@ -34,7 +35,7 @@ module ModTimeStep
         character(len=*),intent(in)     ::  geometry
         real,intent(in)                 ::  CFL_ad
         real                            ::  dl_min
-        real,intent(out)                ::  dt
+        real,intent(inout)              ::  dt
 
         select case(geometry)
         case('spherical')
@@ -61,6 +62,7 @@ module ModTimeStep
 
         ! Initialize dt to be very big
         dt=1.e20
+        dt1=1.e20
 
         ! Loop all the blocks to get minimum dt.
         do iBlock=1,size(Tree%LocalBlocks) 
@@ -77,7 +79,7 @@ module ModTimeStep
         character(len=*),intent(in)     ::  geometry
         real,intent(in)                 ::  CFL_ad
         real                            ::  dl_min
-        real,intent(out)                ::  dt
+        real,intent(inout)              ::  dt
 
         select case(geometry)
         case('spherical')

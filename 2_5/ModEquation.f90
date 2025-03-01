@@ -91,6 +91,7 @@ module ModEquation
         integer                     ::  ivar
         real,intent(out)            ::  EQN_update_R(1:ni,1:nj,1:nk,1:nvar)
         real                        ::  tmp(-ng+1:ng+ni,-ng+1:ng+nj,-ng+1:ng+nk,vr_:vp_)
+        real                        ::  DivB(1:ni,1:nj,1:nk)
         
         ! If_rk
         if (if_rk) then
@@ -157,5 +158,14 @@ module ModEquation
             ModSpherical_curl(ni,nj,nk,ng,&
             Block1%xi,Block1%xj,Block1%dxi,Block1%dxj,Block1%dxk,&
             ModSpherical_cross(ni,nj,nk,ng,primitive(:,:,:,vr_:vp_),primitive(:,:,:,Br_:Bp_)))
+
+        ! Div B correction
+        DivB=ModSpherical_div(ni,nj,nk,ng,Block1%xi,Block1%xj,&
+            Block1%dxi,Block1%dxj,Block1%dxk,primitive(:,:,:,br_:bp_))
+        
+        do ivar=vr_,vp_
+            EQN_update_R(:,:,:,ivar)=EQN_update_R(:,:,:,ivar)-DivB*primitive(1:ni,1:nj,1:nk,br_+ivar-vr_)
+            EQN_update_R(:,:,:,br_+ivar-vr_)=EQN_update_R(:,:,:,br_+ivar-vr_)-DivB*primitive(1:ni,1:nj,1:nk,ivar)
+        end do
     end subroutine ModEquation_Dynamo_MHD
 end module ModEquation

@@ -93,7 +93,7 @@ module ModBlock
         Block1%primitive    =0.
         Block1%primitive_rk =0.
         call random_number(Block1%primitive)
-        Block1%primitive=(Block1%primitive-0.5)*1.e-1
+        Block1%primitive=(Block1%primitive-0.5)*1.e-3
 
         ! Set ghost cell values to zero
         do i=-ng+1,ng+ni; do j=-ng+1,ng+nj; do k=-ng+1,ng+nk
