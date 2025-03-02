@@ -125,7 +125,7 @@ module ModEquation
         
         ! EQN vr_:vp_ pressure gradient & Lorentz force
         tmp(1:ni,1:nj,1:nk,:)=&
-            ModSpherical_Grad_f(ni,nj,nk,ng,&
+            -ModSpherical_Grad_f(ni,nj,nk,ng,&
             Block1%xi,Block1%xj,Block1%dxi,Block1%dxj,Block1%dxk,Block1%p1)
         tmp(1:ni,1:nj,1:nk,:)=tmp(1:ni,1:nj,1:nk,:)+                        &
             ModSpherical_cross(ni,nj,nk,0,                                  &
@@ -134,7 +134,7 @@ module ModEquation
                     primitive(:,:,:,Br_:Bp_)),                              &
                 primitive(1:ni,1:nj,1:nk,Br_:Bp_))
         do ivar=vr_,vp_
-            EQN_update_R(:,:,:,ivar)=EQN_update_R(:,:,:,ivar)-&
+            EQN_update_R(:,:,:,ivar)=EQN_update_R(:,:,:,ivar)+&
                 tmp(1:ni,1:nj,1:nk,ivar)/&
                 Block1%rho0(1:ni,1:nj,1:nk)
         end do
@@ -164,7 +164,7 @@ module ModEquation
             Block1%dxi,Block1%dxj,Block1%dxk,primitive(:,:,:,br_:bp_))
         
         do ivar=vr_,vp_
-            EQN_update_R(:,:,:,ivar)=EQN_update_R(:,:,:,ivar)-DivB*primitive(1:ni,1:nj,1:nk,br_+ivar-vr_)
+            EQN_update_R(:,:,:,ivar)=EQN_update_R(:,:,:,ivar)-DivB*primitive(1:ni,1:nj,1:nk,br_+ivar-vr_)/Block1%rho0(1:ni,1:nj,1:nk)
             EQN_update_R(:,:,:,br_+ivar-vr_)=EQN_update_R(:,:,:,br_+ivar-vr_)-DivB*primitive(1:ni,1:nj,1:nk,ivar)
         end do
     end subroutine ModEquation_Dynamo_MHD
