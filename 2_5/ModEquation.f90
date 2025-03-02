@@ -164,8 +164,10 @@ module ModEquation
             Block1%dxi,Block1%dxj,Block1%dxk,primitive(:,:,:,br_:bp_))
         
         do ivar=vr_,vp_
-            EQN_update_R(:,:,:,ivar)=EQN_update_R(:,:,:,ivar)-DivB*primitive(1:ni,1:nj,1:nk,br_+ivar-vr_)/Block1%rho0(1:ni,1:nj,1:nk)
-            EQN_update_R(:,:,:,br_+ivar-vr_)=EQN_update_R(:,:,:,br_+ivar-vr_)-DivB*primitive(1:ni,1:nj,1:nk,ivar)
+            EQN_update_R(:,:,:,ivar)=EQN_update_R(:,:,:,ivar)-&
+                DivB*primitive(1:ni,1:nj,1:nk,br_+ivar-vr_)/Block1%rho0(1:ni,1:nj,1:nk)
+            EQN_update_R(:,:,:,br_+ivar-vr_)=EQN_update_R(:,:,:,br_+ivar-vr_)-&
+                DivB*primitive(1:ni,1:nj,1:nk,ivar)
         end do
     end subroutine ModEquation_Dynamo_MHD
 end module ModEquation
