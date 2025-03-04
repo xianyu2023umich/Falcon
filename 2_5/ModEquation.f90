@@ -9,6 +9,7 @@ module ModEquation
                                 ModSpherical_cross,&
                                 ModSpherical_curl
     use ModBoundary,    only:   ModBoundary_Dynamo_HD_primitives,&
+                                ModBoundary_Dynamo_MHD_primitives,&
                                 ModBoundary_Dynamo_HD_p1
     use ModDiffusion,   only:   ModDiffusion_Aritificial_1
     use ModParameters,  only:   ni,nj,nk,ng,nvar,ModelS_delta,ModelS_heating_ratio
@@ -107,7 +108,7 @@ module ModEquation
         Block1%p1=Block1%Gamma1*Block1%p0_over_rho0*primitive(:,:,:,rho1_)+&
             Block1%Gamma3_minus_1*Block1%rho0T0*primitive(:,:,:,s1_)
 
-        call ModBoundary_Dynamo_HD_primitives(Block1,if_rk)
+        call ModBoundary_Dynamo_MHD_primitives(Block1,if_rk)
         !call ModBoundary_Dynamo_HD_p1(Block1)
         
         ! EQN rho1_
