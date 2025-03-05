@@ -73,8 +73,8 @@ module ModBoundary
         ! Set boundary condition
         if (Block1%if_top) then
             do i=ni+1,ni+ng
-                primitive(i,:,:,[rho1_,vt_,vp_,s1_])=primitive(2*ni+1-i,:,:,[rho1_,vt_,vp_,s1_])
-                primitive(i,:,:,vr_)=-primitive(2*ni+1-i,:,:,vr_)
+                primitive(i,:,:,[rho1_,vt_,vp_,s1_,bt_,bp_])=primitive(2*ni+1-i,:,:,[rho1_,vt_,vp_,s1_,bt_,bp_])
+                primitive(i,:,:,[vr_,br_])=-primitive(2*ni+1-i,:,:,[vr_,br_])
             end do
         end if
         if (Block1%if_bottom) then
