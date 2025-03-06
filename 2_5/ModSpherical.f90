@@ -42,7 +42,7 @@ module ModSpherical
         end do; end do
 
         do ip=-ng+1,ng+np; do ir=-ng+1,ng+nr
-            Ar_sint(ir,:,ip)=A(ir,:,ip,1)*sint
+            Ar_sint(ir,:,ip)=A(ir,:,ip,1)/sint
             Ap_sint(ir,:,ip)=A(ir,:,ip,3)*sint
         end do; end do
 
