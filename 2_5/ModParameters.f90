@@ -28,4 +28,6 @@ module ModParameters
     real                ::      CFL
 
     character(len=100)  ::      NameEquation="HD"
+    character(len=100)  ::      Initiation_type
+    integer             ::      Initiation_type_index=0
 end module ModParameters

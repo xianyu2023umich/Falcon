@@ -8,7 +8,8 @@ program test1
                                     ModAdvance_CommunicateAll
     use ModParameters,      only:   MpiSize,MpiRank,r_range,&
                                     ModelS_filename,nSteps,&
-                                    nStepsSavePlot,nthSavePlot,nphSavePlot,rSave,CFL
+                                    nStepsSavePlot,nthSavePlot,nphSavePlot,rSave,CFL,&
+                                    Initiation_type_index
     use ModReadParameters,  only:   ModReadParameters_read
     use ModYinYangTree,     only:   YYTree,&
                                     YinYangTree_InitTree,&
@@ -44,6 +45,12 @@ program test1
 
     ! Initiate the tree and set GC
     call test1_INITIATION
+    select case(Initiation_type_index)
+    case(0)
+    case(1)
+        call ModInitiation_harmonic(Tree)
+        if (MpiRank==0) print *,'Using Harmonics'
+    end select
     !call ModInitiation_harmonic(Tree)
     !call ModSave_Globe(Tree,rSave,[nthSavePlot,nphSavePlot],filename='00000000.dat',logical_unit=2)
 

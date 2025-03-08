@@ -4,7 +4,8 @@ module ModReadParameters
                                     ModelS_delta,ModelS_c_sound__CGS,&
                                     ModelS_rmax,ModelS_dc_type,ModelS_dc_rmax,ModelS_filename,&
                                     nStepsSavePlot,nthSavePlot,nphSavePlot,nSteps,rSave,CFL,&
-                                    ModelS_heating_ratio,NameEquation
+                                    ModelS_heating_ratio,NameEquation,Initiation_type,&
+                                    Initiation_type_index
     use ModStratification,  only:   ModStratification_DoAll
     use ModAMR,             only:   AMR_nLevels,AMR_r_ranges,AMR_rtp_if_divide
     use ModVariables,       only:   rho1_,vr_,vt_,vp_,br_,bt_,bp_,s1_
@@ -231,6 +232,15 @@ module ModReadParameters
                         vt_=3
                         vp_=4
                         s1_=5
+                    end select
+
+                case("#INITIATION")
+                    read(logical_unit, *, iostat=ios) Initiation_type
+                    select case(Initiation_type)
+                    case("none","None","NONE")
+                        Initiation_type_index=0
+                    case("Harmonics","harmonics")
+                        Initiation_type_index=1
                     end select
                 end select
             end if
