@@ -26,7 +26,7 @@ module ModInitiation
                 coord=[Block1%xi(ir),Block1%xj(it),Block1%xk(ip)]
                 if (.not. Block1%if_yin) coord=ModYinyang_CoordConv_0D(coord)
                 vec=sin(dpi*(coord(1)-r_range(1))/(r_range(2)-r_range(1)))*[1.,1.,1.]*1.e-2*&
-                    sin(dpi*4.*coord(3))*sin(coord(2))**4
+                    sin(12.*coord(3))*sin(coord(2))**4
                 Block1%primitive(ir,it,ip,vr_:vp_)=vec
                 if (.not. Block1%if_yin) then
                     Block1%primitive(ir,it,ip,vr_:vp_)=&
