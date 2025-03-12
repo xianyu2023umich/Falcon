@@ -30,4 +30,6 @@ module ModParameters
     character(len=100)  ::      NameEquation="HD"
     character(len=100)  ::      Initiation_type
     integer             ::      Initiation_type_index=0
+
+    integer             ::      rLevelInitial
 end module ModParameters

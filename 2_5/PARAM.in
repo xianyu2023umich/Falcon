@@ -3,10 +3,13 @@
 0.96            r_range(2)
 
 #GRID
-4              ni
-12              nj
-36              nk
+8              ni
+48              nj
+144              nk
 2               ng
+
+#RADIALGRID
+3
 
 #ARTIFICIALCOOLING
 0.96            rmax
@@ -16,38 +19,39 @@ scale           type_dc
 
 #MODELS
 1.0e-6          ModelS_delta
-0.6e5           ModelS_c_sound__CGS
+6.0e4           ModelS_c_sound__CGS
 0.7_1.0.dat
 
 #AMR
-7               AMR_nLevels
-T T T
+1               AMR_nLevels
+F T T
+0.95
+1.0
+
+F T T
 0.7
 1.0
-T T T
-0.7
-1.0
-T T T
+F T T
 0.83
 1.0
-T T T
+F T T
 0.90
 1.0
-T T T
+F T T
 0.93
 1.0
-T F F
+F F F
 0.945
 1.0
-T F F
+F F F
 0.945
 1.0
 
 #SAVEPLOT
-200              nStepsSavePlot
-0.95            rSave
-360             nthSavePlot
-720             nphSavePlot
+1000              nStepsSavePlot
+0.955            rSave
+180             nthSavePlot
+360             nphSavePlot
 
 #TIMESTEPPING
 0.8             CFL
@@ -60,3 +64,6 @@ T F F
 
 #EQUATION
 hd             MHD or HD
+
+#INITIATION
+harmonics       Initiation_type

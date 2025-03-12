@@ -14,17 +14,19 @@ Module ModStratification
     ! All in CGS unit.
 
     integer             ::      ModelS_npoints
-    real(8),allocatable ::      ModelS_r_list(:),&
-                                ModelS_g_list__CGS(:),&
-                                ModelS_log_rho0_list__CGS(:),&
-                                ModelS_log_p0_list__CGS(:),&
-                                ModelS_log_T0_list(:),&
-                                ModelS_gamma1_list(:),&
-                                ModelS_gamma3_list(:),&
-                                ModelS_log_kap_list__CGS(:),&
-                                ModelS_Diffusion_list__CGS(:),&
-                                ModelS_cooling_list__CGS(:),&
-                                ModelS_Xi_list(:)    
+    real(8),allocatable ::      ModelS_r_list(:)                    ,&
+                                ModelS_g_list__CGS(:)               ,&
+                                ModelS_log_rho0_list__CGS(:)        ,&
+                                ModelS_log_p0_list__CGS(:)          ,&
+                                ModelS_log_T0_list(:)               ,&
+                                ModelS_gamma1_list(:)               ,&
+                                ModelS_gamma3_list(:)               ,&
+                                ModelS_log_kap_list__CGS(:)         ,&
+                                ModelS_Diffusion_list__CGS(:)       ,&
+                                ModelS_cooling_list__CGS(:)         ,&
+                                ModelS_Xi_list(:)                   ,& 
+                                ModelS_rho0Hc_inv(:)                ,&
+                                ModelS_rho0Hc_inv_int(:) 
     contains
 
     subroutine ModStratification_DoAll(filename)
@@ -35,6 +37,8 @@ Module ModStratification
         call ModStratification_calc_heating
         call ModStratification_calc_Xi
         call ModStratification_set_scales
+        call ModStratification_set_scale_height
+        print *,ModelS_dc_rmax
     end subroutine ModStratification_DoAll
 
     ! Read the stratification lookuptable for the profiles.
@@ -69,7 +73,9 @@ Module ModStratification
             ModelS_log_kap_list__CGS    (ModelS_npoints),&
             ModelS_Diffusion_list__CGS  (ModelS_npoints),&
             ModelS_cooling_list__CGS    (ModelS_npoints),&
-            ModelS_Xi_list              (ModelS_npoints))
+            ModelS_Xi_list              (ModelS_npoints),&
+            ModelS_rho0Hc_inv           (ModelS_npoints),&
+            ModelS_rho0Hc_inv_int       (ModelS_npoints))
 
         ! Then read the file
         do iline=1,ModelS_npoints
@@ -276,5 +282,103 @@ Module ModStratification
         !print *,ModelS_delta,x__bar,v__bar,t__bar,rho0__bar,rho1__bar,g__bar,p0__bar,p1__bar,T0__bar,s1__bar,heat__bar
         
     end subroutine ModStratification_set_scales
+
+    subroutine ModStratification_set_scale_height
+        implicit none
+
+        integer                     ::  ipoint
+
+        ModelS_rho0Hc_inv(2:ModelS_npoints-1)=&
+            (   10.0**ModelS_log_rho0_list__CGS(3:ModelS_npoints)       &
+            -   10.0**ModelS_log_rho0_list__CGS(1:ModelS_npoints-2) )/  &
+            (   ModelS_r_list(3:ModelS_npoints)                         &
+            -   ModelS_r_list(1:ModelS_npoints-2)                   )/R_sun__CGS
+
+        ! Linear extrapolation to the two ends
+        ModelS_rho0Hc_inv(1) =&
+            ModelS_rho0Hc_inv(2)*2.0-ModelS_rho0Hc_inv(3)
+        ModelS_rho0Hc_inv(ModelS_npoints)=&
+            ModelS_rho0Hc_inv(ModelS_npoints-1)*2.0-ModelS_rho0Hc_inv(ModelS_npoints-2)
+
+        ModelS_rho0Hc_inv=abs(ModelS_rho0Hc_inv)/10.0**ModelS_log_rho0_list__CGS
+
+        ! Get the integral of it
+        ModelS_rho0Hc_inv(1)=0
+
+        do ipoint=2,ModelS_npoints
+            ModelS_rho0Hc_inv_int(ipoint)=ModelS_rho0Hc_inv_int(ipoint-1)+&
+                (ModelS_rho0Hc_inv(ipoint)+ModelS_rho0Hc_inv(ipoint-1))/2.0*&
+                (ModelS_r_list(ipoint)-ModelS_r_list(ipoint-1))
+        end do
+    end subroutine ModStratification_set_scale_height
+
+    function ModStratification_get_rho0HC_inv_int(r) result(Hc_inv_int)
+        implicit none
+
+        real,intent(in)             ::  r
+        real(8)                     ::  Hc_inv_int
+        real                        ::  posi_r,weight_r
+        integer                     ::  posi_r_int
+
+        ! Interpolate the table to posi_r
+        ! Constant extrapolation outside two ends
+
+        posi_r=(r-ModelS_r_list(1))/(ModelS_r_list(ModelS_npoints)-ModelS_r_list(1))*(ModelS_npoints-1)+1.0
+
+        if (posi_r<1) then
+
+            Hc_inv_int  =   ModelS_rho0HC_inv_int(1)
+
+        else if (posi_r>=ModelS_npoints) then
+
+            Hc_inv_int  =   ModelS_rho0HC_inv_int(ModelS_npoints)
+        else
+            ! Get the position of the input r value
+            
+            posi_r_int=floor(posi_r)
+            weight_r=posi_r-posi_r_int
+
+            Hc_inv_int  =   (ModelS_rho0HC_inv_int(posi_r_int)*(1.0-weight_r) + &
+                    ModelS_rho0HC_inv_int(posi_r_int+1)*weight_r)
+        end if
+    end function ModStratification_get_rho0HC_inv_int
+
+    function ModStratification_get_r_from_rho0HC_inv_int(rho0HC_inv_int) result(r)
+        implicit none
+        real(8),intent(in)          ::  rho0HC_inv_int
+        integer                     ::  ipoint
+        real(8)                     ::  r,weight_r
+
+        r=-1.0
+
+        if (rho0HC_inv_int < ModelS_rho0HC_inv_int(1)) then
+            r=ModelS_r_list(1)
+        else if (rho0HC_inv_int > ModelS_rho0HC_inv_int(ModelS_npoints)) then
+            r=ModelS_r_list(ModelS_npoints)
+        else
+            do ipoint=1,ModelS_npoints-1
+                if ((rho0HC_inv_int- ModelS_rho0HC_inv_int(ipoint))*&
+                    (rho0HC_inv_int- ModelS_rho0HC_inv_int(ipoint+1))<0.0) then
+                    
+                    weight_r=abs(rho0HC_inv_int-ModelS_rho0HC_inv_int(ipoint))/&
+                        abs(ModelS_rho0HC_inv_int(ipoint+1)-ModelS_rho0HC_inv_int(ipoint))
+
+                    r=  ModelS_r_list(ipoint)*(1.0-weight_r)+&
+                        ModelS_r_list(ipoint+1)*weight_r
+                end if
+            end do
+        end if
+    end function ModStratification_get_r_from_rho0HC_inv_int
+
+
+    function ModStratification_get_middle_r(r_range) result(r_middle)
+        implicit none
+        real                        ::  r_middle
+        real,intent(in)             ::  r_range(2)
+
+        r_middle = ModStratification_get_r_from_rho0HC_inv_int(&
+            (ModStratification_get_rho0HC_inv_int(r_range(1))+&
+            ModStratification_get_rho0HC_inv_int(r_range(2)))/2.0)
+    end function ModStratification_get_middle_r
 
 end module ModStratification

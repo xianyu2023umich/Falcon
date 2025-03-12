@@ -98,7 +98,7 @@ module ModBoundary
                     -       Block1%p1(ng-2,1:ng,1:ng))/26.         &   
 
                     -       12.0/26.0*Block1%dxi                                        &   ! Gravity term 12.0=24.0/2.0
-                    *       Block1%primitive  (1,ng,  1:ng,1:ng)*  &   ! rho1 at the boundary
+                    *       Block1%primitive  (rho1_,ng,  1:ng,1:ng)*  &   ! rho1 at the boundary
                            (Block1%g_over_rho0  (ng,  1:ng,1:ng)*  &   ! g at the boundary
                             Block1%rho0         (ng,  1:ng,1:ng)+  &
                             Block1%g_over_rho0  (ng+1,1:ng,1:ng)*  &
@@ -114,7 +114,7 @@ module ModBoundary
                     -       Block1%p1(3,1:ng,1:ng))/26.                   &   
 
                     +       12.0/26.0*Block1%dxi                                        &   ! Gravity term 12.0=24.0/2.0
-                    *       Block1%primitive  (1,1,1:ng,1:ng)*            &   ! rho1 at the boundary
+                    *       Block1%primitive  (rho1_,1,1:ng,1:ng)*            &   ! rho1 at the boundary
                            (Block1%g_over_rho0  (1,1:ng,1:ng)*            &   ! g at the boundary
                             Block1%rho0         (1,1:ng,1:ng)+            &
                             Block1%g_over_rho0  (0,1:ng,1:ng)*            &

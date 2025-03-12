@@ -1,14 +1,15 @@
 module ModYinYangTree
 
-    use ModBlock,       only:   BlockType,&
-                                ModBlock_Init
-    use ModConst,       only:   dpi
-    use ModBoundary,    only:   ModBoundary_if_top_bottom
-    use ModYinYang,     only:   ModYinYang_CoordConv_0D
-    use ModAllocation,  only:   ModAllocation_Init,&
-                                ranges_of_ranks,&
-                                nLocalLeafNodes,&
-                                iLocalLeafNodes
+    use ModBlock,           only:   BlockType,&
+                                    ModBlock_Init
+    use ModConst,           only:   dpi
+    use ModBoundary,        only:   ModBoundary_if_top_bottom
+    use ModYinYang,         only:   ModYinYang_CoordConv_0D
+    use ModAllocation,      only:   ModAllocation_Init,&
+                                    ranges_of_ranks,&
+                                    nLocalLeafNodes,&
+                                    iLocalLeafNodes
+    use ModStratification,  only:   ModStratification_get_middle_r
 
     !use ModAllocation
 
@@ -107,6 +108,46 @@ module ModYinYangTree
             end do
         end if
     end subroutine YinYangTree_Divide_OneBranch
+
+    ! Divide r based on density scale height
+
+    subroutine YinYangTree_Divide_r(Tree,Node)
+        implicit none
+        type(YYTree)                ::  Tree                ! Tree
+        type(TreeNode),target       ::  Node                ! The node to divide
+        integer                     ::  iChild              ! i of children
+        real                        ::  r_middle
+        real                        ::  rtp_range1(3,2)     ! rtp range of child
+
+        if (Node%if_leaf) then
+
+            ! Every time a new divide is performed,
+            ! reset if_labelled to false.
+            Tree%if_labelled=.false.
+
+            ! 8 children.
+            allocate(Node%children(2))
+            iChild=1
+
+            do iChild=1,2
+
+                rtp_range1=Node%rtp_range
+                r_middle=ModStratification_get_middle_r(Node%rtp_range(1,:))
+
+                if (iChild==1) then
+                    rtp_range1(1,:)=[rtp_range1(1,1),r_middle]
+                else
+                    rtp_range1(1,:)=[r_middle,rtp_range1(1,2)]
+                end if
+
+                ! initialize this Node
+                ! the children should have the same if_yin as their mom
+                call YinYangTree_InitNode(Node%children(iChild),rtp_range1,Node%if_yin)
+        end do; end if
+
+        ! No longer leaf
+        Node%if_leaf=.False.
+    end subroutine YinYangTree_Divide_r
 
     ! Divide one node into 2/4/8 children
 

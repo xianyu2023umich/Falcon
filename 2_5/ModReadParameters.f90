@@ -5,7 +5,7 @@ module ModReadParameters
                                     ModelS_rmax,ModelS_dc_type,ModelS_dc_rmax,ModelS_filename,&
                                     nStepsSavePlot,nthSavePlot,nphSavePlot,nSteps,rSave,CFL,&
                                     ModelS_heating_ratio,NameEquation,Initiation_type,&
-                                    Initiation_type_index
+                                    Initiation_type_index,rLevelInitial
     use ModStratification,  only:   ModStratification_DoAll
     use ModAMR,             only:   AMR_nLevels,AMR_r_ranges,AMR_rtp_if_divide
     use ModVariables,       only:   rho1_,vr_,vt_,vp_,br_,bt_,bp_,s1_
@@ -72,7 +72,14 @@ module ModReadParameters
                         write(*,*) "Error from ",name_sub,": Error reading ng"
                         stop 1
                     end if
-                
+
+                case("#RADIALGRID")
+                    read(logical_unit, *, iostat=ios) rLevelInitial
+                    if (ios/=0) then
+                        write(*,*) "Error from ",name_sub,": Error reading rLevelInitial"
+                        stop 1
+                    end if
+                    
                 ! About artificial cooling
                 ! Read ModelS_rmax. Then read the type of dc
                 ! If user, then read an extra line
@@ -243,6 +250,8 @@ module ModReadParameters
                         Initiation_type_index=1
                     end select
                 end select
+
+            
             end if
         end do
 
