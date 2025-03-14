@@ -37,11 +37,11 @@ module ModEquation
         ! Perparations
         ! Get m; Set R=0.; Set p1; Set Boundary.
         EQN_update_R=0.
-        
-        Block1%p1=Block1%Gamma1*Block1%p0_over_rho0*primitive(:,:,:,rho1_)+&
-            Block1%Gamma3_minus_1*Block1%rho0T0*primitive(:,:,:,s1_)
 
         call ModBoundary_Dynamo_HD_primitives(Block1,if_rk)
+
+        Block1%p1=Block1%Gamma1*Block1%p0_over_rho0*primitive(:,:,:,rho1_)+&
+            Block1%Gamma3_minus_1*Block1%rho0T0*primitive(:,:,:,s1_)
         !call ModBoundary_Dynamo_HD_p1(Block1)
         
         ! EQN rho1_

@@ -64,11 +64,11 @@ module ModDiffusion
                     flux(:,:,:,ivar)=flux(:,:,:,ivar)*(c(1:ni+1,:,:)+c(0:ni,:,:))*0.5
                 end do
 
-                do ivar=vr_,vp_
-                    flux(:,:,:,ivar)=flux(:,:,:,ivar)+&
-                        (primitive(1:ni+1,:,:,ivar)+primitive(0:ni,:,:,ivar))*&
-                        0.5*flux(:,:,:,rho1_)
-                end do
+                !do ivar=vr_,vp_
+                !    flux(:,:,:,ivar)=flux(:,:,:,ivar)+&
+                !        (primitive(1:ni+1,:,:,ivar)+primitive(0:ni,:,:,ivar))*&
+                !        0.5*flux(:,:,:,rho1_)
+                !end do
 
                 ! update EQN_update_R
                 do ivar=1,nvar
@@ -97,11 +97,11 @@ module ModDiffusion
                     flux(:,:,:,ivar)=flux(:,:,:,ivar)*(c(:,1:nj+1,:)+c(:,0:nj,:))*0.5
                 end do
 
-                do ivar=vr_,vp_
-                    flux(:,:,:,ivar)=flux(:,:,:,ivar)+&
-                        (primitive(:,1:nj+1,:,ivar)+primitive(:,0:nj,:,ivar))*&
-                        0.5*flux(:,:,:,rho1_)
-                end do
+                !do ivar=vr_,vp_
+                !    flux(:,:,:,ivar)=flux(:,:,:,ivar)+&
+                !        (primitive(:,1:nj+1,:,ivar)+primitive(:,0:nj,:,ivar))*&
+                !        0.5*flux(:,:,:,rho1_)
+                !end do
 
                 do ivar=1,nvar
                     do i=1,ni
@@ -131,11 +131,11 @@ module ModDiffusion
                     flux(:,:,:,ivar)=flux(:,:,:,ivar)*(c(:,:,1:nk+1)+c(:,:,0:nk))*0.5
                 end do
 
-                do ivar=vr_,vp_
-                    flux(:,:,:,ivar)=flux(:,:,:,ivar)+&
-                        (primitive(:,:,1:nk+1,ivar)+primitive(:,:,0:nk,ivar))*&
-                        0.5*flux(:,:,:,rho1_)
-                end do
+                !do ivar=vr_,vp_
+                !    flux(:,:,:,ivar)=flux(:,:,:,ivar)+&
+                !        (primitive(:,:,1:nk+1,ivar)+primitive(:,:,0:nk,ivar))*&
+                !        0.5*flux(:,:,:,rho1_)
+                !end do
 
                 do ivar=1,nvar
                     do j=1,nj; do i=1,ni
