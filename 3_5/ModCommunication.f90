@@ -745,13 +745,15 @@ module ModCommunication
         ! First send iBlock_pairs.
         do iGC_sender=1,Tree%nGC_Senders
             GC_Sender1=>Tree%GC_Senders(iGC_sender)
-            call MPI_ISEND(GC_Sender1%iBlock_pairs,2*GC_Sender1%nBlock_Pairs,mpi_integer,GC_Sender1%iRank,1,MPI_COMM_WORLD,request,ierr)
+            call MPI_ISEND(GC_Sender1%iBlock_pairs,2*GC_Sender1%nBlock_Pairs,&
+            mpi_integer,GC_Sender1%iRank,1,MPI_COMM_WORLD,request,ierr)
             requests(iGC_sender)=request
         end do
 
         do iGC_receiver=1,Tree%nGC_Receivers
             GC_Receiver1=>Tree%GC_Receivers(iGC_receiver)
-            call MPI_RECV(GC_Receiver1%iBlock_pairs,2*GC_Receiver1%nBlock_Pairs,mpi_integer,GC_Receiver1%iRank,1,MPI_COMM_WORLD,status,ierr)
+            call MPI_RECV(GC_Receiver1%iBlock_pairs,2*GC_Receiver1%nBlock_Pairs,&
+            mpi_integer,GC_Receiver1%iRank,1,MPI_COMM_WORLD,status,ierr)
             requests(iGC_receiver)=request
         end do
 
@@ -760,13 +762,15 @@ module ModCommunication
         ! Then send Block_Pairs_Ptrs.
         do iGC_sender=1,Tree%nGC_Senders
             GC_Sender1=>Tree%GC_Senders(iGC_sender)
-            call MPI_ISEND(GC_Sender1%Block_Pairs_Ptrs,2*GC_Sender1%nBlock_Pairs,mpi_integer,GC_Sender1%iRank,1,MPI_COMM_WORLD,request,ierr)
+            call MPI_ISEND(GC_Sender1%Block_Pairs_Ptrs,2*GC_Sender1%nBlock_Pairs,&
+            mpi_integer,GC_Sender1%iRank,1,MPI_COMM_WORLD,request,ierr)
             requests(iGC_sender)=request
         end do
 
         do iGC_receiver=1,Tree%nGC_Receivers
             GC_Receiver1=>Tree%GC_Receivers(iGC_receiver)
-            call MPI_RECV(GC_Receiver1%Block_Pairs_Ptrs,2*GC_Receiver1%nBlock_Pairs,mpi_integer,GC_Receiver1%iRank,1,MPI_COMM_WORLD,status,ierr)
+            call MPI_RECV(GC_Receiver1%Block_Pairs_Ptrs,2*GC_Receiver1%nBlock_Pairs,&
+            mpi_integer,GC_Receiver1%iRank,1,MPI_COMM_WORLD,status,ierr)
             requests(iGC_receiver)=request
         end do
 
@@ -1047,13 +1051,15 @@ module ModCommunication
             ! First send iBlock_pairs.
             do iHC_sender=1,Tree%nHC_Senders_MGL(iLevel)
                 HC_Sender1=>Tree%HC_Senders_MGL(Tree%HC_Senders_MGL_ptrs(iLevel,1)+iHC_sender-1)
-                call MPI_ISEND(HC_Sender1%iBlock_pairs,2*HC_Sender1%nBlock_Pairs,mpi_integer,HC_Sender1%iRank,1,MPI_COMM_WORLD,request,ierr)
+                call MPI_ISEND(HC_Sender1%iBlock_pairs,2*HC_Sender1%nBlock_Pairs,&
+                mpi_integer,HC_Sender1%iRank,1,MPI_COMM_WORLD,request,ierr)
                 requests(iHC_sender)=request
             end do
     
             do iHC_receiver=1,Tree%nHC_Receivers_MGL(iLevel)
                 HC_Receiver1=>Tree%HC_Receivers_MGL(Tree%HC_Receivers_MGL_ptrs(iLevel,1)+iHC_receiver-1)
-                call MPI_RECV(HC_Receiver1%iBlock_pairs,2*HC_Receiver1%nBlock_Pairs,mpi_integer,HC_Receiver1%iRank,1,MPI_COMM_WORLD,status,ierr)
+                call MPI_RECV(HC_Receiver1%iBlock_pairs,2*HC_Receiver1%nBlock_Pairs,&
+                mpi_integer,HC_Receiver1%iRank,1,MPI_COMM_WORLD,status,ierr)
                 requests(iHC_receiver)=request
             end do
     
@@ -1062,13 +1068,15 @@ module ModCommunication
             ! Then send Block_Pairs_Ptrs.
             do iHC_sender=1,Tree%nHC_Senders_MGL(iLevel)
                 HC_Sender1=>Tree%HC_Senders_MGL(Tree%HC_Senders_MGL_ptrs(iLevel,1)+iHC_sender-1)
-                call MPI_ISEND(HC_Sender1%Block_Pairs_Ptrs,2*HC_Sender1%nBlock_Pairs,mpi_integer,HC_Sender1%iRank,1,MPI_COMM_WORLD,request,ierr)
+                call MPI_ISEND(HC_Sender1%Block_Pairs_Ptrs,2*HC_Sender1%nBlock_Pairs,&
+                mpi_integer,HC_Sender1%iRank,1,MPI_COMM_WORLD,request,ierr)
                 requests(iHC_sender)=request
             end do
     
             do iHC_receiver=1,Tree%nHC_Receivers_MGL(iLevel)
                 HC_Receiver1=>Tree%HC_Receivers_MGL(Tree%HC_Receivers_MGL_ptrs(iLevel,1)+iHC_receiver-1)
-                call MPI_RECV(HC_Receiver1%Block_Pairs_Ptrs,2*HC_Receiver1%nBlock_Pairs,mpi_integer,HC_Receiver1%iRank,1,MPI_COMM_WORLD,status,ierr)
+                call MPI_RECV(HC_Receiver1%Block_Pairs_Ptrs,2*HC_Receiver1%nBlock_Pairs,&
+                mpi_integer,HC_Receiver1%iRank,1,MPI_COMM_WORLD,status,ierr)
                 requests(iHC_receiver)=request
             end do
     
@@ -1101,11 +1109,24 @@ module ModCommunication
         end do
     end subroutine ModCommunication_SetHC_Receiver
 
+    ! Ok the new one works. I want a new new version that
+    ! calculates EQN_update_R during sendrecv and waitall.
+    ! But here is a tricky thing: in the two previous versions,
+    ! the local sendrecvs are done BEFORE sendrecv waitall, while
+    ! the global sendrecvs are done after those. So here I should 
+    ! first move all local sendrecvs to the last loop.
+    ! Then the second thing is to add a new input like if_rk to
+    ! determine how to calculate EQN_update_R. if_rk should be
+    ! renamed as if_rk_communicate, and the new one should be
+    ! called if_rk_calc.
+    ! And there's one thing to do before all these: define the
+    ! EQN_update_R as a variable in BlockType. 
+
+    
+
     ! In this new version i want to follow the suggestion
     ! from chatgpt that put the mpi_irecv before the mpi_isend.
-    ! And I also want to try to put calculations between
-    ! mpi_isend and waitall. Hopefully this one will work
-    ! and be faster.
+    ! Hopefully this one will work and be faster.
 
     subroutine ModCommunication_SendRecvGC_new(Tree,if_rk)
 
@@ -1182,13 +1203,16 @@ module ModCommunication
         do iGC_receiver=1,Tree%nGC_Receivers
             ! Receive the message.
             GC_Receiver1=>Tree%GC_Receivers(iGC_receiver)
-            call MPI_IRECV(GC_Receiver1%message,nvar*GC_Receiver1%nGC,mpi_real,GC_Receiver1%iRank,1,MPI_COMM_WORLD,requests_recv(iGC_receiver),ierr)
+            call MPI_IRECV(GC_Receiver1%message,nvar*GC_Receiver1%nGC,mpi_real,&
+            GC_Receiver1%iRank,1,MPI_COMM_WORLD,requests_recv(iGC_receiver),ierr)
 
             do iofBlock_pair=1,GC_Receiver1%nBlock_Pairs
                 GC_target1=>Tree%LocalBlocks(GC_Receiver1%iLocalBlock_and_iGCtarget_list(iofBlock_pair,1))%&
                     GC_targets(GC_Receiver1%iLocalBlock_and_iGCtarget_list(iofBlock_pair,2))
                 GC_target1%primitive_list=&
-                    GC_Receiver1%message(GC_Receiver1%Block_Pairs_Ptrs(iofBlock_pair,1):GC_Receiver1%Block_Pairs_Ptrs(iofBlock_pair,2),:)
+                    GC_Receiver1%message(&
+                    GC_Receiver1%Block_Pairs_Ptrs(iofBlock_pair,1):&
+                    GC_Receiver1%Block_Pairs_Ptrs(iofBlock_pair,2),:)
             end do
         end do
 
@@ -1202,12 +1226,15 @@ module ModCommunication
             do iofBlock_pair=1,GC_Sender1%nBlock_Pairs
                 GC_source1=>Tree%LocalBlocks(GC_Sender1%iLocalBlock_and_iGCtarget_list(iofBlock_pair,1))%&
                     GC_sources(GC_Sender1%iLocalBlock_and_iGCtarget_list(iofBlock_pair,2))
-                GC_Sender1%message(GC_Sender1%Block_Pairs_Ptrs(iofBlock_pair,1):GC_Sender1%Block_Pairs_Ptrs(iofBlock_pair,2),:)=&
+                GC_Sender1%message(&
+                    GC_Sender1%Block_Pairs_Ptrs(iofBlock_pair,1):&
+                    GC_Sender1%Block_Pairs_Ptrs(iofBlock_pair,2),:)=&
                     GC_source1%primitive_list
             end do
 
             ! Send the message.
-            call MPI_ISEND(GC_Sender1%message,nvar*GC_Sender1%nGC,mpi_real,GC_Sender1%iRank,1,MPI_COMM_WORLD,requests_send(iGC_sender),ierr)
+            call MPI_ISEND(GC_Sender1%message,nvar*GC_Sender1%nGC,mpi_real,&
+                GC_Sender1%iRank,1,MPI_COMM_WORLD,requests_send(iGC_sender),ierr)
         end do
 
         call MPI_WAITALL(Tree%nGC_Receivers,requests_recv,MPI_STATUSES_IGNORE,ierr)
@@ -1324,25 +1351,31 @@ module ModCommunication
             do iofBlock_pair=1,GC_Sender1%nBlock_Pairs
                 GC_source1=>Tree%LocalBlocks(GC_Sender1%iLocalBlock_and_iGCtarget_list(iofBlock_pair,1))%&
                     GC_sources(GC_Sender1%iLocalBlock_and_iGCtarget_list(iofBlock_pair,2))
-                GC_Sender1%message(GC_Sender1%Block_Pairs_Ptrs(iofBlock_pair,1):GC_Sender1%Block_Pairs_Ptrs(iofBlock_pair,2),:)=&
+                GC_Sender1%message(&
+                    GC_Sender1%Block_Pairs_Ptrs(iofBlock_pair,1):&
+                    GC_Sender1%Block_Pairs_Ptrs(iofBlock_pair,2),:)=&
                     GC_source1%primitive_list
             end do
 
             ! Send the message.
-            call MPI_ISEND(GC_Sender1%message,nvar*GC_Sender1%nGC,mpi_real,GC_Sender1%iRank,1,MPI_COMM_WORLD,request,ierr)
+            call MPI_ISEND(GC_Sender1%message,nvar*GC_Sender1%nGC,mpi_real,&
+            GC_Sender1%iRank,1,MPI_COMM_WORLD,request,ierr)
             requests(iGC_sender)=request
         end do
 
         do iGC_receiver=1,Tree%nGC_Receivers
             ! Receive the message.
             GC_Receiver1=>Tree%GC_Receivers(iGC_receiver)
-            call MPI_RECV(GC_Receiver1%message,nvar*GC_Receiver1%nGC,mpi_real,GC_Receiver1%iRank,1,MPI_COMM_WORLD,status,ierr)
+            call MPI_RECV(GC_Receiver1%message,nvar*GC_Receiver1%nGC,mpi_real,&
+                GC_Receiver1%iRank,1,MPI_COMM_WORLD,status,ierr)
 
             do iofBlock_pair=1,GC_Receiver1%nBlock_Pairs
                 GC_target1=>Tree%LocalBlocks(GC_Receiver1%iLocalBlock_and_iGCtarget_list(iofBlock_pair,1))%&
                     GC_targets(GC_Receiver1%iLocalBlock_and_iGCtarget_list(iofBlock_pair,2))
                 GC_target1%primitive_list=&
-                    GC_Receiver1%message(GC_Receiver1%Block_Pairs_Ptrs(iofBlock_pair,1):GC_Receiver1%Block_Pairs_Ptrs(iofBlock_pair,2),:)
+                    GC_Receiver1%message(&
+                    GC_Receiver1%Block_Pairs_Ptrs(iofBlock_pair,1):&
+                    GC_Receiver1%Block_Pairs_Ptrs(iofBlock_pair,2),:)
             end do
         end do
 
@@ -1458,12 +1491,15 @@ module ModCommunication
             do iofBlock_pair=1,HC_Sender1%nBlock_Pairs
                 HC_source1=>Tree%LocalBlocks(HC_Sender1%iLocalBlock_and_iGCtarget_list(iofBlock_pair,1))%&
                     Multigrid_levels(iLevel)%HC_sources(HC_Sender1%iLocalBlock_and_iGCtarget_list(iofBlock_pair,2))
-                HC_Sender1%message(HC_Sender1%Block_Pairs_Ptrs(iofBlock_pair,1):HC_Sender1%Block_Pairs_Ptrs(iofBlock_pair,2),:)=&
+                HC_Sender1%message(&
+                    HC_Sender1%Block_Pairs_Ptrs(iofBlock_pair,1):&
+                    HC_Sender1%Block_Pairs_Ptrs(iofBlock_pair,2),:)=&
                     HC_source1%primitive_list
             end do
 
             ! Send the message.
-            call MPI_ISEND(HC_Sender1%message,HC_Sender1%nGC,mpi_real,HC_Sender1%iRank,1,MPI_COMM_WORLD,request,ierr)
+            call MPI_ISEND(HC_Sender1%message,HC_Sender1%nGC,mpi_real,&
+            HC_Sender1%iRank,1,MPI_COMM_WORLD,request,ierr)
             requests(iHC_sender)=request
         end do
 
@@ -1476,7 +1512,9 @@ module ModCommunication
                 HC_target1=>Tree%LocalBlocks(HC_Receiver1%iLocalBlock_and_iGCtarget_list(iofBlock_pair,1))%&
                     Multigrid_levels(iLevel)%HC_targets(HC_Receiver1%iLocalBlock_and_iGCtarget_list(iofBlock_pair,2))
                 HC_target1%primitive_list=&
-                    HC_Receiver1%message(HC_Receiver1%Block_Pairs_Ptrs(iofBlock_pair,1):HC_Receiver1%Block_Pairs_Ptrs(iofBlock_pair,2),:)
+                    HC_Receiver1%message(&
+                    HC_Receiver1%Block_Pairs_Ptrs(iofBlock_pair,1):&
+                    HC_Receiver1%Block_Pairs_Ptrs(iofBlock_pair,2),:)
             end do
         end do
 
