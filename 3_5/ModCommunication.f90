@@ -120,7 +120,8 @@ module ModCommunication
         integer                         ::  iLocalBlock,iGC_target,iGC_source
         integer                         ::  iRecv,nRecv,recv_message(4)
         integer                         ::  ierr,request,status(MPI_STATUS_SIZE)
-        integer                         ::  nSend
+        integer                         ::  nSend,iSend
+        integer,allocatable             ::  send_message(:,:),requests(:)
         
         ! Get the local table for GC_sources of each block
         nGC_sources_table_local=0
@@ -143,21 +144,38 @@ module ModCommunication
             allocate(Block_source%GC_sources(nGC_sources_table_global(Block_source%iBlock)))
             Block_source%nGC_sources=0
         end do
+        !if (MpiRank==0) print *,nGC_sources_table_global,Tree%NumLeafNodes
 
-        ! Then loop the local blocks and send the iBlock of GC_targets
-        ! to the target ranks.
-
+        ! Before the loop, we need to get the n of messages to send
+        nSend=0
         do iLocalBlock=1,Tree%nLocalBlocks
             Block_source=>Tree%LocalBlocks(iLocalBlock)
             do iGC_target=1,Block_source%nGC_targets
                 GC_target1=>Block_source%GC_targets(iGC_target)
 
-                !call MPI_ISEND([MpiRank,Block1%iBlock,GC_target1%iBlock,GC_target1%nGC],4,mpi_integer,&
-                !        GC_target1%iRank,1,MPI_COMM_WORLD,request,ierr)
+                if (GC_target1%iRank/=MpiRank) then
+                    nSend=nSend+1
+                end if
+            end do
+        end do
+        allocate(send_message(nSend,4))
+        allocate(requests(nSend))
+
+        ! Then loop the local blocks and send the iBlock of GC_targets
+        ! to the target ranks.
+
+        iSend=0
+        do iLocalBlock=1,Tree%nLocalBlocks
+            Block_source=>Tree%LocalBlocks(iLocalBlock)
+            do iGC_target=1,Block_source%nGC_targets
+                GC_target1=>Block_source%GC_targets(iGC_target)
 
                 if (GC_target1%iRank/=MpiRank) then
-                    call MPI_ISEND([MpiRank,Block_source%iBlock,GC_target1%iBlock,GC_target1%nGC],4,mpi_integer,&
-                        GC_target1%iRank,1,MPI_COMM_WORLD,request,ierr)
+                    iSend=iSend+1
+                    send_message(iSend,:)=[MpiRank,Block_source%iBlock,GC_target1%iBlock,GC_target1%nGC]
+
+                    call MPI_ISEND(send_message(iSend,:),4,mpi_integer,&
+                        GC_target1%iRank,1,MPI_COMM_WORLD,requests(iSend),ierr)
                 else
                     Block_target=>Tree%LocalBlocks(GC_target1%iBlock-ranges_of_ranks(MpiRank,1)+1)
                     Block_target%nGC_sources=Block_target%nGC_sources+1
@@ -182,9 +200,10 @@ module ModCommunication
 
         ! Recv the iBlock messages for GC_sources
         do iRecv=1,nRecv
-            call MPI_RECV(recv_message,4,mpi_integer,MPI_ANY_SOURCE,1,MPI_COMM_WORLD,status,ierr)
+            call MPI_RECV(recv_message,4,mpi_integer,MPI_ANY_SOURCE,MPI_ANY_TAG,MPI_COMM_WORLD,status,ierr)
             Block_target=>Tree%LocalBlocks(recv_message(3)-ranges_of_ranks(MpiRank,1)+1)
             Block_target%nGC_sources=Block_target%nGC_sources+1
+
             GC_source1=>Block_target%GC_sources(Block_target%nGC_sources)
 
             GC_source1%iRank=recv_message(1)
@@ -194,6 +213,11 @@ module ModCommunication
             allocate(GC_source1%xijk_list(GC_source1%nGC,3))
             allocate(GC_source1%primitive_list(GC_source1%nGC,nvar))
         end do
+
+        ! Wait for all the sends to be done
+        call MPI_WAITALL(nSend,requests,MPI_STATUSES_IGNORE,ierr)
+        deallocate(requests)
+        deallocate(send_message)
 
         ! At last we get the total n of requests
 
@@ -221,7 +245,7 @@ module ModCommunication
         real,allocatable                ::  recv_message_real(:,:)
         integer,allocatable             ::  recv_message_int(:,:)
 
-        integer                         ::  tag,ierr,request,status(MPI_STATUS_SIZE)
+        integer                         ::  tag,ierr,request,status(MPI_STATUS_SIZE),count
 
         ! Send the GC_targets%xijk_list
 
@@ -232,7 +256,7 @@ module ModCommunication
                 GC_target1 => Block_target%GC_targets(iGC_target)
 
                 if (GC_target1%iRank/=MpiRank) then
-                    tag = ModCommunication_GetTag(ranges_of_ranks,Block_target%iBlock,GC_target1%iBlock,GC_target1%iRank)
+                    tag = ModCommunication_GetTag(Block_target%iBlock,GC_target1%iBlock,MpiRank,GC_target1%iRank)
                     call MPI_ISEND(GC_target1%xijk_list,&
                         3*GC_target1%nGC,mpi_real,GC_target1%iRank,tag,MPI_COMM_WORLD,request,ierr)
                 else
@@ -275,7 +299,7 @@ module ModCommunication
                 if (GC_source1%iRank/=MpiRank) then
                     ! Allocate the buffer, get the tag and then receive
                     allocate(recv_message_real(GC_source1%nGC,3))
-                    tag=ModCommunication_GetTag(ranges_of_ranks,GC_source1%iBlock,Block_source%iBlock,MpiRank)
+                    tag=ModCommunication_GetTag(GC_source1%iBlock,Block_source%iBlock,GC_source1%iRank,MpiRank)
                     call MPI_RECV(recv_message_real,3*GC_source1%nGC,mpi_real,GC_source1%iRank,tag,MPI_COMM_WORLD,status,ierr)
 
                     ! See whether same if_yin or not
@@ -298,7 +322,7 @@ module ModCommunication
             do iGC_target=1,size(Block_target%GC_targets)
                 GC_target1 => Block_target%GC_targets(iGC_target)
                 if (GC_target1%iRank/=MpiRank) then
-                    tag = ModCommunication_GetTag(ranges_of_ranks,Block_target%iBlock,GC_target1%iBlock,GC_target1%iRank)
+                    tag = ModCommunication_GetTag(Block_target%iBlock,GC_target1%iBlock,MpiRank,GC_target1%iRank)
                     call MPI_ISEND(GC_target1%ijk_list,&
                         3*GC_target1%nGC,mpi_integer,GC_target1%iRank,tag,MPI_COMM_WORLD,request,ierr)
                 end if ! GC_target1%iRank/=MpiRank
@@ -316,7 +340,7 @@ module ModCommunication
                 if (GC_source1%iRank/=MpiRank) then
                     ! Allocate the buffer, get the tag and then receive
                     allocate(recv_message_int(GC_source1%nGC,3))
-                    tag=ModCommunication_GetTag(ranges_of_ranks,GC_source1%iBlock,Block_source%iBlock,MpiRank)
+                    tag=ModCommunication_GetTag(GC_source1%iBlock,Block_source%iBlock,GC_source1%iRank,MpiRank)
                     call MPI_RECV(recv_message_int,3*GC_source1%nGC,mpi_integer,GC_source1%iRank,tag,MPI_COMM_WORLD,status,ierr)
 
                     ! Assign the received message to the ijk_list. Then deallocate the buffer.
@@ -437,7 +461,7 @@ module ModCommunication
                 HC_target1 => MGL_target%HC_targets(iHC_target)
 
                 if (HC_target1%iRank/=MpiRank) then
-                    tag = ModCommunication_GetTag(ranges_of_ranks,MGL_target%iBlock,HC_target1%iBlock,HC_target1%iRank)
+                    tag = ModCommunication_GetTag(MGL_target%iBlock,HC_target1%iBlock,MpiRank,HC_target1%iRank)
                     call MPI_ISEND(HC_target1%xijk_list,&
                         3*HC_target1%nGC,mpi_real,HC_target1%iRank,tag,MPI_COMM_WORLD,request,ierr)
                 else
@@ -480,7 +504,7 @@ module ModCommunication
                 if (HC_source1%iRank/=MpiRank) then
                     ! Allocate the buffer, get the tag and then receive
                     allocate(recv_message_real(HC_source1%nGC,3))
-                    tag=ModCommunication_GetTag(ranges_of_ranks,HC_source1%iBlock,MGL_source%iBlock,MpiRank)
+                    tag=ModCommunication_GetTag(HC_source1%iBlock,MGL_source%iBlock,HC_source1%iRank,MpiRank)
                     call MPI_RECV(recv_message_real,3*HC_source1%nGC,mpi_real,HC_source1%iRank,tag,MPI_COMM_WORLD,status,ierr)
 
                     ! See whether same if_yin or not
@@ -503,7 +527,7 @@ module ModCommunication
             do iHC_target=1,size(MGL_target%HC_targets)
                 HC_target1 => MGL_target%HC_targets(iHC_target)
                 if (HC_target1%iRank/=MpiRank) then
-                    tag = ModCommunication_GetTag(ranges_of_ranks,MGL_target%iBlock,HC_target1%iBlock,HC_target1%iRank)
+                    tag = ModCommunication_GetTag(MGL_target%iBlock,HC_target1%iBlock,MpiRank,HC_target1%iRank)
                     call MPI_ISEND(HC_target1%ijk_list,&
                         3*HC_target1%nGC,mpi_integer,HC_target1%iRank,tag,MPI_COMM_WORLD,request,ierr)
                 end if ! HC_target1%iRank/=MpiRank
@@ -521,7 +545,7 @@ module ModCommunication
                 if (HC_source1%iRank/=MpiRank) then
                     ! Allocate the buffer, get the tag and then receive
                     allocate(recv_message_int(HC_source1%nGC,3))
-                    tag=ModCommunication_GetTag(ranges_of_ranks,HC_source1%iBlock,MGL_source%iBlock,MpiRank)
+                    tag=ModCommunication_GetTag(HC_source1%iBlock,MGL_source%iBlock,HC_source1%iRank,MpiRank)
                     call MPI_RECV(recv_message_int,3*HC_source1%nGC,mpi_integer,HC_source1%iRank,tag,MPI_COMM_WORLD,status,ierr)
 
                     ! Assign the received message to the ijk_list. Then deallocate the buffer.
@@ -1557,26 +1581,25 @@ module ModCommunication
 
     ! About the tags.
 
-    function ModCommunication_GetTag(iLeafNode_ranges,iBlockSend,iBlockRecv,iRankRecv) result(Tag)
+    function ModCommunication_GetTag(iBlockSend,iBlockRecv,iRankSend,iRankRecv) result(Tag)
         implicit none
-        integer,intent(in)      :: iLeafNode_ranges(0:MpiSize-1,2)
         integer,intent(in)      :: iBlockSend,iBlockRecv
-        integer,intent(in)      :: iRankRecv
+        integer,intent(in)      :: iRankSend,iRankRecv 
         
         integer                 :: tag
 
-        Tag=nMaxBlocksPerRank*iBlockSend+(iBlockRecv-iLeafNode_ranges(iRankRecv,1))
+        Tag=nMaxBlocksPerRank*(iBlockSend-ranges_of_ranks(iRankSend,1))+&
+            (iBlockRecv-ranges_of_ranks(iRankRecv,1))
     end function ModCommunication_GetTag
 
-    function ModCommunication_SolveTag(iLeafNode_ranges,Tag,iRankRecv) result(iBlockSendRecv)
+    function ModCommunication_SolveTag(Tag,iRankSend,iRankRecv) result(iBlockSendRecv)
         implicit none
-        integer,intent(in)      :: iLeafNode_ranges(0:MpiSize-1,2)
         integer,intent(in)      :: Tag
-        integer,intent(in)      :: iRankRecv
+        integer,intent(in)      :: iRankRecv,iRankSend
 
         integer                 :: iBlockSendRecv(2)
 
-        iBlockSendRecv(1)=Tag/nMaxBlocksPerRank
-        iBlockSendRecv(2)=mod(Tag,nMaxBlocksPerRank)+iLeafNode_ranges(iRankRecv,1)
+        iBlockSendRecv(1)=Tag/nMaxBlocksPerRank+ranges_of_ranks(iRankSend,1)
+        iBlockSendRecv(2)=mod(Tag,nMaxBlocksPerRank)+ranges_of_ranks(iRankRecv,1)
     end function ModCommunication_SolveTag
 end module
