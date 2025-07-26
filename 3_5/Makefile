@@ -5,8 +5,8 @@ test0_PGM	=	test0.exe
 test0_OBJ   =   ModMath.o
 
 test1_PGM	=	test1.exe
-test1_MPIOBJ=	ModCommunication.o 	ModLinearSolver.o	ModPFSS.o			ModAdvance.o \
-				ModSavePlot.o		ModCheck.o
+test1_MPIOBJ=	ModCommunication.o 	ModLinearSolver.o	ModPFSS.o			ModCheck.o \
+				ModAdvance.o        ModSavePlot.o		
 test1_OBJ   =   ModVariables.o 		ModYinYang.o		ModDerivative.o		ModSpherical.o		 \
 				ModConst.o			ModParameters.o		ModLinReconstruct.o ModStratification.o \
 				ModMath.o			ModAllocation.o	    ModControl.o		ModBlock.o \
