@@ -117,25 +117,41 @@ module ModCommunication
         type(GC_target),pointer         ::  GC_target1,GC_source1
         integer                         ::  nGC_sources_table_local(Tree%NumLeafNodes)
         integer                         ::  nGC_sources_table_global(Tree%NumLeafNodes)
+        integer                         ::  nGC_international_sources_table_local(Tree%NumLeafNodes)
+        integer                         ::  nGC_international_sources_table_global(Tree%NumLeafNodes)
         integer                         ::  iLocalBlock,iGC_target,iGC_source
-        integer                         ::  iRecv,nRecv,recv_message(4)
+        integer                         ::  iRecv,nRecv
+        integer,allocatable             ::  send_message_all(:),recv_message_all(:)
         integer                         ::  ierr,request,status(MPI_STATUS_SIZE)
         integer                         ::  nSend,iSend
-        integer,allocatable             ::  send_message(:,:),requests(:)
+        integer,allocatable             ::  requests_send(:),requests_recv(:)
         
         ! Get the local table for GC_sources of each block
         nGC_sources_table_local=0
+        nGC_international_sources_table_local=0
         do iLocalBlock=1,Tree%nLocalBlocks
             Block_source=>Tree%LocalBlocks(iLocalBlock)
+
             do iGC_target=1,Block_source%nGC_targets
-                nGC_sources_table_local(Block_source%GC_targets(iGC_target)%iBlock)=&
-                    nGC_sources_table_local(Block_source%GC_targets(iGC_target)%iBlock)+1
+                GC_target1=>Block_source%GC_targets(iGC_target)
+
+                ! This is all the GC_sources.
+                nGC_sources_table_local(GC_target1%iBlock)=&
+                        nGC_sources_table_local(GC_target1%iBlock)+1
+
+                ! Only the international GC_sources.
+                if (MpiRank/=GC_target1%iRank) then
+                    nGC_international_sources_table_local(GC_target1%iBlock)=&
+                        nGC_international_sources_table_local(GC_target1%iBlock)+1
+                end if
             end do
         end do
 
-
         ! Then reduce it to the global table
         call MPI_ALLReduce(nGC_sources_table_local,nGC_sources_table_global,&
+            Tree%NumLeafNodes,MPI_integer,MPI_SUM,MPI_COMM_WORLD,ierr)
+
+        call MPI_ALLReduce(nGC_international_sources_table_local,nGC_international_sources_table_global,&
             Tree%NumLeafNodes,MPI_integer,MPI_SUM,MPI_COMM_WORLD,ierr)
 
         ! Loop the local blocks and allocate GC_sources for them
@@ -144,7 +160,6 @@ module ModCommunication
             allocate(Block_source%GC_sources(nGC_sources_table_global(Block_source%iBlock)))
             Block_source%nGC_sources=0
         end do
-        !if (MpiRank==0) print *,nGC_sources_table_global,Tree%NumLeafNodes
 
         ! Before the loop, we need to get the n of messages to send
         nSend=0
@@ -158,8 +173,24 @@ module ModCommunication
                 end if
             end do
         end do
-        allocate(send_message(nSend,4))
-        allocate(requests(nSend))
+
+        ! Get the n of messages to receive
+        nRecv=0
+        do iLocalBlock=1,Tree%nLocalBlocks
+            Block_source=>Tree%LocalBlocks(iLocalBlock)
+            nRecv=nRecv+nGC_international_sources_table_global(Block_source%iBlock)
+        end do
+
+        allocate(send_message_all(nSend*4))
+        allocate(recv_message_all(nRecv*4))
+        allocate(requests_send(nSend))
+        allocate(requests_recv(nRecv))
+
+        ! Recv the iBlock messages for GC_sources
+        do iRecv=1,nRecv
+            call MPI_IRECV(recv_message_all(iRecv*4-3:iRecv*4),4,mpi_integer,&
+                MPI_ANY_SOURCE,11,MPI_COMM_WORLD,requests_recv(iRecv),ierr)
+        end do
 
         ! Then loop the local blocks and send the iBlock of GC_targets
         ! to the target ranks.
@@ -172,10 +203,10 @@ module ModCommunication
 
                 if (GC_target1%iRank/=MpiRank) then
                     iSend=iSend+1
-                    send_message(iSend,:)=[MpiRank,Block_source%iBlock,GC_target1%iBlock,GC_target1%nGC]
+                    send_message_all(iSend*4-3:iSend*4)=[MpiRank,Block_source%iBlock,GC_target1%iBlock,GC_target1%nGC]
 
-                    call MPI_ISEND(send_message(iSend,:),4,mpi_integer,&
-                        GC_target1%iRank,1,MPI_COMM_WORLD,requests(iSend),ierr)
+                    call MPI_ISEND(send_message_all(iSend*4-3:iSend*4),4,mpi_integer,&
+                        GC_target1%iRank,11,MPI_COMM_WORLD,requests_send(iSend),ierr)
                 else
                     Block_target=>Tree%LocalBlocks(GC_target1%iBlock-ranges_of_ranks(MpiRank,1)+1)
                     Block_target%nGC_sources=Block_target%nGC_sources+1
@@ -190,34 +221,29 @@ module ModCommunication
                 end if
             end do
         end do
-
-        ! Get the n of messages to receive
-        nRecv=0
-        do iLocalBlock=1,Tree%nLocalBlocks
-            Block_source=>Tree%LocalBlocks(iLocalBlock)
-            nRecv=nRecv+nGC_sources_table_global(Block_source%iBlock)-Block_source%nGC_sources
-        end do
-
-        ! Recv the iBlock messages for GC_sources
+        ! Wait for all the sends to be done
+        call MPI_WAITALL(nSend,requests_send,MPI_STATUSES_IGNORE,ierr)
+        call MPI_WAITALL(nRecv,requests_recv,MPI_STATUSES_IGNORE,ierr)
+        
+        ! Assign and allocate GC_sources
         do iRecv=1,nRecv
-            call MPI_RECV(recv_message,4,mpi_integer,MPI_ANY_SOURCE,MPI_ANY_TAG,MPI_COMM_WORLD,status,ierr)
-            Block_target=>Tree%LocalBlocks(recv_message(3)-ranges_of_ranks(MpiRank,1)+1)
+            Block_target=>Tree%LocalBlocks(recv_message_all(iRecv*4-1)-ranges_of_ranks(MpiRank,1)+1)
             Block_target%nGC_sources=Block_target%nGC_sources+1
 
             GC_source1=>Block_target%GC_sources(Block_target%nGC_sources)
 
-            GC_source1%iRank=recv_message(1)
-            GC_source1%iBlock=recv_message(2)
-            GC_source1%if_yin=recv_message(2).le.Tree%NumLeafNodes_YinYang(1)
-            GC_source1%nGC=recv_message(4)
+            GC_source1%iRank=recv_message_all(iRecv*4-3)
+            GC_source1%iBlock=recv_message_all(iRecv*4-2)
+            GC_source1%if_yin=recv_message_all(iRecv*4-2).le.Tree%NumLeafNodes_YinYang(1)
+            GC_source1%nGC=recv_message_all(iRecv*4)
             allocate(GC_source1%xijk_list(GC_source1%nGC,3))
             allocate(GC_source1%primitive_list(GC_source1%nGC,nvar))
         end do
 
-        ! Wait for all the sends to be done
-        call MPI_WAITALL(nSend,requests,MPI_STATUSES_IGNORE,ierr)
-        deallocate(requests)
-        deallocate(send_message)
+        deallocate(requests_recv)
+        deallocate(requests_send)
+        deallocate(send_message_all)
+        deallocate(recv_message_all)
 
         ! At last we get the total n of requests
 
