@@ -804,7 +804,6 @@ module ModCommunication
             GC_Receiver1=>Tree%GC_Receivers(iGC_receiver)
             call MPI_RECV(GC_Receiver1%iBlock_pairs,2*GC_Receiver1%nBlock_Pairs,&
             mpi_integer,GC_Receiver1%iRank,1,MPI_COMM_WORLD,status,ierr)
-            requests(iGC_receiver)=request
         end do
 
         call MPI_WAITALL(Tree%nGC_Senders,requests,MPI_STATUSES_IGNORE,ierr)
@@ -821,10 +820,10 @@ module ModCommunication
             GC_Receiver1=>Tree%GC_Receivers(iGC_receiver)
             call MPI_RECV(GC_Receiver1%Block_Pairs_Ptrs,2*GC_Receiver1%nBlock_Pairs,&
             mpi_integer,GC_Receiver1%iRank,1,MPI_COMM_WORLD,status,ierr)
-            requests(iGC_receiver)=request
         end do
 
         call MPI_WAITALL(Tree%nGC_Senders,requests,MPI_STATUSES_IGNORE,ierr)
+
 
         deallocate(requests)
 
