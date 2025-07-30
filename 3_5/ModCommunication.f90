@@ -112,7 +112,7 @@ module ModCommunication
 
     subroutine ModCommunication_GetnGC_sources(Tree)
         implicit none
-        type(YYTree),intent(in),target  ::  Tree
+        type(YYTree),target             ::  Tree
         type(BlockType),pointer         ::  Block_source,Block_target
         type(GC_target),pointer         ::  GC_target1,GC_source1
         integer                         ::  nGC_sources_table_local(Tree%NumLeafNodes)
@@ -162,24 +162,25 @@ module ModCommunication
         end do
 
         ! Before the loop, we need to get the n of messages to send
-        nSend=0
+        Tree%LocalBlocks(:)%nSend=0
         do iLocalBlock=1,Tree%nLocalBlocks
             Block_source=>Tree%LocalBlocks(iLocalBlock)
             do iGC_target=1,Block_source%nGC_targets
                 GC_target1=>Block_source%GC_targets(iGC_target)
 
                 if (GC_target1%iRank/=MpiRank) then
-                    nSend=nSend+1
+                    Block_source%nSend=Block_source%nSend+1
                 end if
             end do
         end do
+        nSend=sum(Tree%LocalBlocks(:)%nSend)
 
         ! Get the n of messages to receive
-        nRecv=0
         do iLocalBlock=1,Tree%nLocalBlocks
             Block_source=>Tree%LocalBlocks(iLocalBlock)
-            nRecv=nRecv+nGC_international_sources_table_global(Block_source%iBlock)
+            Block_source%nRecv=nGC_international_sources_table_global(Block_source%iBlock)
         end do
+        nRecv=sum(Tree%LocalBlocks(:)%nRecv)
 
         allocate(send_message_all(nSend*4))
         allocate(recv_message_all(nRecv*4))
@@ -217,6 +218,7 @@ module ModCommunication
                     GC_source1%if_yin=Block_source%iBlock.le.Tree%NumLeafNodes_YinYang(1)
                     GC_source1%nGC=GC_target1%nGC
                     allocate(GC_source1%xijk_list(GC_source1%nGC,3))
+                    allocate(GC_source1%ijk_list(GC_source1%nGC,3))
                     allocate(GC_source1%primitive_list(GC_source1%nGC,nvar))
                 end if
             end do
@@ -237,6 +239,7 @@ module ModCommunication
             GC_source1%if_yin=recv_message_all(iRecv*4-2).le.Tree%NumLeafNodes_YinYang(1)
             GC_source1%nGC=recv_message_all(iRecv*4)
             allocate(GC_source1%xijk_list(GC_source1%nGC,3))
+            allocate(GC_source1%ijk_list(GC_source1%nGC,3))
             allocate(GC_source1%primitive_list(GC_source1%nGC,nvar))
         end do
 
@@ -268,13 +271,43 @@ module ModCommunication
         integer                         ::  iLocalBlock
         integer                         ::  iGC_target,iGC_source
         type(GC_target),pointer         ::  GC_source1,GC_target1
-        real,allocatable                ::  recv_message_real(:,:)
-        integer,allocatable             ::  recv_message_int(:,:)
+        integer                         ::  iSend,iRecv,nSend,nRecv
+        integer,allocatable             ::  requests_send(:),requests_recv(:)
 
-        integer                         ::  tag,ierr,request,status(MPI_STATUS_SIZE),count
+        integer                         ::  tag,ierr,status(MPI_STATUS_SIZE)
+
+        ! xijk_list
+
+        ! Prepare the requests_recv
+        iRecv=0
+        nRecv=sum(Tree%LocalBlocks(:)%nRecv)
+        allocate(requests_recv(nRecv))
+
+        ! Post the irecvs at first
+        do iLocalBlock=1,Tree%nLocalBlocks
+            Block_source => Tree%LocalBlocks(iLocalBlock)
+    
+            do iGC_source=1,size(Block_source%GC_sources)
+                GC_source1 => Block_source%GC_sources(iGC_source)
+
+                ! Local sends have been done before so only deal with the remote sends.
+                
+                if (GC_source1%iRank/=MpiRank) then
+                    iRecv=iRecv+1
+                    ! Allocate the buffer, get the tag and then receive
+                    tag=ModCommunication_GetTag(GC_source1%iBlock,Block_source%iBlock,GC_source1%iRank,MpiRank)
+                    call MPI_IRECV(GC_source1%xijk_list,3*GC_source1%nGC,mpi_real,GC_source1%iRank,tag,MPI_COMM_WORLD,&
+                    requests_recv(iRecv),ierr)
+                endif ! GC_source1%iRank/=MpiRank
+            end do
+        end do
 
         ! Send the GC_targets%xijk_list
+        iSend=0
+        nSend=sum(Tree%LocalBlocks(:)%nSend)
+        allocate(requests_send(nSend))
 
+        ! Post the isends at first
         do iLocalBlock=1,Tree%nLocalBlocks
             Block_target => Tree%LocalBlocks(iLocalBlock)
 
@@ -282,9 +315,10 @@ module ModCommunication
                 GC_target1 => Block_target%GC_targets(iGC_target)
 
                 if (GC_target1%iRank/=MpiRank) then
+                    iSend=iSend+1
                     tag = ModCommunication_GetTag(Block_target%iBlock,GC_target1%iBlock,MpiRank,GC_target1%iRank)
                     call MPI_ISEND(GC_target1%xijk_list,&
-                        3*GC_target1%nGC,mpi_real,GC_target1%iRank,tag,MPI_COMM_WORLD,request,ierr)
+                        3*GC_target1%nGC,mpi_real,GC_target1%iRank,tag,MPI_COMM_WORLD,requests_send(iSend),ierr)
                 else
                     Block_source=>Tree%LocalBlocks(GC_target1%iBlock-ranges_of_ranks(MpiRank,1)+1)
 
@@ -311,37 +345,53 @@ module ModCommunication
                 end if ! GC_target1%iRank/=MpiRank
             end do ! iGC_target
         end do ! iLocalBlock
-        
 
-        ! Set GC_sources
+        ! Wait for all the recvs to be done
+        call MPI_WAITALL(nRecv,requests_recv,MPI_STATUSES_IGNORE,ierr)
+        call MPI_WAITALL(nSend,requests_send,MPI_STATUSES_IGNORE,ierr)
+
+        ! YinYang conversion
         do iLocalBlock=1,Tree%nLocalBlocks
             Block_source => Tree%LocalBlocks(iLocalBlock)
     
+            do iGC_source=1,size(Block_source%GC_sources)
+                GC_source1 => Block_source%GC_sources(iGC_source)
+                
+                if (GC_source1%iRank/=MpiRank) then
+                    ! See whether same if_yin or not
+                    if (GC_source1%if_yin .neqv. Block_source%if_yin) then
+                        GC_source1%xijk_list=ModYinYang_CoordConv_1D(GC_source1%xijk_list,GC_source1%nGC)
+                    endif
+                endif ! GC_source1%iRank/=MpiRank
+            end do
+        end do
+
+        ! ijk_list
+        iRecv=0
+        requests_recv=0
+
+        ! Post the irecvs
+        do iLocalBlock=1,Tree%nLocalBlocks
+            Block_source => Tree%LocalBlocks(iLocalBlock)
             do iGC_source=1,size(Block_source%GC_sources)
                 GC_source1 => Block_source%GC_sources(iGC_source)
 
                 ! Local sends have been done before so only deal with the remote sends.
                 
                 if (GC_source1%iRank/=MpiRank) then
-                    ! Allocate the buffer, get the tag and then receive
-                    allocate(recv_message_real(GC_source1%nGC,3))
+                    iRecv=iRecv+1
                     tag=ModCommunication_GetTag(GC_source1%iBlock,Block_source%iBlock,GC_source1%iRank,MpiRank)
-                    call MPI_RECV(recv_message_real,3*GC_source1%nGC,mpi_real,GC_source1%iRank,tag,MPI_COMM_WORLD,status,ierr)
-
-                    ! See whether same if_yin or not
-                    if (GC_source1%if_yin .eqv. Block_source%if_yin) then
-                        GC_source1%xijk_list=recv_message_real
-                    else
-                        GC_source1%xijk_list=ModYinYang_CoordConv_1D(recv_message_real,GC_source1%nGC)
-                    endif
-                    deallocate(recv_message_real)
+                    call MPI_IRECV(GC_source1%ijk_list,3*GC_source1%nGC,mpi_integer,GC_source1%iRank,tag,MPI_COMM_WORLD,&
+                    requests_recv(iRecv),ierr)
                 endif ! GC_source1%iRank/=MpiRank
             end do
         end do
 
-        ! But -- these are just for xijk_list for remote sends.
-        ! Do again for ijk_list.
-        ! There's no need to care local sends, cuz local sends before include both xijk_list and ijk_list.
+        ! Send the GC_targets%ijk_list
+        iSend=0
+        requests_send=0
+
+        ! Post the isends at first
 
         do iLocalBlock=1,Tree%nLocalBlocks
             Block_target => Tree%LocalBlocks(iLocalBlock)
@@ -350,31 +400,14 @@ module ModCommunication
                 if (GC_target1%iRank/=MpiRank) then
                     tag = ModCommunication_GetTag(Block_target%iBlock,GC_target1%iBlock,MpiRank,GC_target1%iRank)
                     call MPI_ISEND(GC_target1%ijk_list,&
-                        3*GC_target1%nGC,mpi_integer,GC_target1%iRank,tag,MPI_COMM_WORLD,request,ierr)
+                        3*GC_target1%nGC,mpi_integer,GC_target1%iRank,tag,MPI_COMM_WORLD,requests_send(iSend),ierr)
                 end if ! GC_target1%iRank/=MpiRank
             end do ! iGC_target
         end do ! iLocalBlock
 
-        ! Set GC_sources
-        do iLocalBlock=1,Tree%nLocalBlocks
-            Block_source => Tree%LocalBlocks(iLocalBlock)
-            do iGC_source=1,size(Block_source%GC_sources)
-                GC_source1 => Block_source%GC_sources(iGC_source)
-
-                ! Local sends have been done before so only deal with the remote sends.
-                
-                if (GC_source1%iRank/=MpiRank) then
-                    ! Allocate the buffer, get the tag and then receive
-                    allocate(recv_message_int(GC_source1%nGC,3))
-                    tag=ModCommunication_GetTag(GC_source1%iBlock,Block_source%iBlock,GC_source1%iRank,MpiRank)
-                    call MPI_RECV(recv_message_int,3*GC_source1%nGC,mpi_integer,GC_source1%iRank,tag,MPI_COMM_WORLD,status,ierr)
-
-                    ! Assign the received message to the ijk_list. Then deallocate the buffer.
-                    GC_source1%ijk_list=recv_message_int
-                    deallocate(recv_message_int)
-                endif ! GC_source1%iRank/=MpiRank
-            end do
-        end do
+        ! Wait for all the recvs to be done
+        call MPI_WAITALL(nRecv,requests_recv,MPI_STATUSES_IGNORE,ierr)
+        call MPI_WAITALL(nSend,requests_send,MPI_STATUSES_IGNORE,ierr)
         call MPI_BARRIER(MPI_COMM_WORLD,ierr)
     end subroutine ModCommunication_SetGC_sources
 

@@ -96,6 +96,7 @@ module ModBlock
         type(GC_target),allocatable ::  GC_targets(:)           ! GC targets 
         type(GC_target),allocatable ::  GC_sources(:)           ! GC targets 
         integer,allocatable         ::  GC_requests(:)
+        integer                     ::  nSend,nRecv
 
         ! About the convection zone
         logical                     ::  if_SSM
