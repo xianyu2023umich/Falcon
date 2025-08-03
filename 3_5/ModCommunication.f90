@@ -368,7 +368,7 @@ module ModCommunication
 
         ! ijk_list
         iRecv=0
-        requests_recv=0
+        requests_recv=MPI_REQUEST_NULL
 
         ! Post the irecvs
         do iLocalBlock=1,Tree%nLocalBlocks
@@ -389,15 +389,16 @@ module ModCommunication
 
         ! Send the GC_targets%ijk_list
         iSend=0
-        requests_send=0
+        requests_send=MPI_REQUEST_NULL
 
-        ! Post the isends at first
+        ! Post the isends then
 
         do iLocalBlock=1,Tree%nLocalBlocks
             Block_target => Tree%LocalBlocks(iLocalBlock)
             do iGC_target=1,size(Block_target%GC_targets)
                 GC_target1 => Block_target%GC_targets(iGC_target)
                 if (GC_target1%iRank/=MpiRank) then
+                    iSend=iSend+1
                     tag = ModCommunication_GetTag(Block_target%iBlock,GC_target1%iBlock,MpiRank,GC_target1%iRank)
                     call MPI_ISEND(GC_target1%ijk_list,&
                         3*GC_target1%nGC,mpi_integer,GC_target1%iRank,tag,MPI_COMM_WORLD,requests_send(iSend),ierr)
