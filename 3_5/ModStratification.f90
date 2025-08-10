@@ -36,7 +36,6 @@ Module ModStratification
         call ModStratification_calc_Xi
         call ModStratification_set_scales
         call ModStratification_set_scale_height
-        write(*,*)'ModelS_dc_rmax=',ModelS_dc_rmax
     end subroutine ModStratification_DoAll
 
     ! Read the stratification lookuptable for the profiles.

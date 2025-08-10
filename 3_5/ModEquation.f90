@@ -71,7 +71,7 @@ module ModEquation
         
         ! EQN vr Gravity
         EQN_update_R(:,:,:,vr_)=EQN_update_R(:,:,:,vr_)-&
-            Block1%g_over_rho0_III*primitive(1:ni,1:nj,1:nk,rho1_)
+            Block1%g_over_rho0_III(1:ni,1:nj,1:nk)*primitive(1:ni,1:nj,1:nk,rho1_)
 
         ! EQN s1_ advection term of s1
         EQN_update_R(:,:,:,s1_)=-&

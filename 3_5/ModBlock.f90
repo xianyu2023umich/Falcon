@@ -419,7 +419,7 @@ module ModBlock
                 Block1%gamma1_III(:,j,k)        =Block1%gamma1_I
                 Block1%gamma3_minus_1_III(:,j,k)=Block1%gamma3_I-1.0
                 Block1%rho0_III(:,j,k)          =Block1%rho0_I
-                Block1%g_over_rho0_III(:,j,k)   =Block1%g_I
+                Block1%g_over_rho0_III(:,j,k)   =Block1%g_I/Block1%rho0_I
                 Block1%p0_over_rho0_III(:,j,k)  =Block1%p0_I/Block1%rho0_I
                 Block1%rho0T0_III(:,j,k)        =Block1%rho0_I*Block1%te0_I
                 Block1%total_heat_III(:,j,k)    =Block1%diffusion_I+Block1%cooling_I

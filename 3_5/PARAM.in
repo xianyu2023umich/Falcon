@@ -3,19 +3,19 @@
 
 #DOMAIN
 0.7             r_range(1)
-0.96            r_range(2)
+0.99            r_range(2)
 
 #GRID
-12               ni
-36              nj
-108             nk
+8               ni
+24              nj
+72             nk
 2               ng
 
 #RADIALGRID
-2
+1
 
 #ARTIFICIALCOOLING
-0.96            rmax
+0.99            rmax
 scale           type_dc
 
 5.4e-2
@@ -26,47 +26,39 @@ scale           type_dc
 0.7_1.0.dat
 
 #AMR
-1               AMR_nLevels
+0               AMR_nLevels
+F T T
+0.7
+1.0
 F T T
 0.83
 1.0
-F T T
-0.90
-1.0
-F T T
-0.95
-1.0
-
-
-
-F T T
-0.83
-1.0
-
 F T T
 0.90
 1.0
 F T T
 0.93
 1.0
-F F F
-0.945
-1.0
-F F F
-0.945
-1.0
 
 #SAVEPLOT
-100              nStepsSavePlot
-0.955            rSave
-180             nthSavePlot
-360             nphSavePlot
+1               nPlots
+Cube            charType
+1               nStepsSavePlot
+0.75            rmin
+0.95            rmax
+21               nr
+0.0             thmin
+3.1415926       thmax
+60             nth
+-3.1415926      phmin
+3.1415926       phmax
+120             nph
 
 #TIMESTEPPING
 0.8             CFL
 
 #STOP
-100             nSteps
+1             nSteps
 
 #HEATING
 1.0           ModelS_heating_ratio
@@ -76,3 +68,6 @@ hd             MHD or HD
 
 #INITIATION
 harmonics       Initiation_type
+
+#DOCHECK
+T               DoCheck

@@ -1,5 +1,15 @@
 module ModParameters
 
+    type PlotType
+        character(len=100)  ::  charType
+        integer         ::      iType
+        integer         ::      nStepsSavePlot
+        integer         ::      logical_unit
+        real            ::      rtp_SavePlot(3)        
+        real            ::      rtp_range_SavePlot(3,2)    
+        integer         ::      nrtp_SavePlot(3)          
+    end type PlotType
+
     integer             ::      MpiSize,MpiRank             !   MPI
 
     integer             ::      iGeometry                   !   0 is cartesian, 1 is spherical
@@ -20,10 +30,10 @@ module ModParameters
     character(len=100)  ::      ModelS_filename
     real                ::      ModelS_heating_ratio=1.0
 
-    integer             ::      nStepsSavePlot
-    integer             ::      nthSavePlot
-    integer             ::      nphSavePlot
-    real                ::      rSave
+    integer             ::      nPlots=0
+    type(PlotType),&
+        allocatable,&
+        target          ::  Plots(:)
 
     integer             ::      nSteps                      !   Total n of steps
     real                ::      CFL
@@ -35,4 +45,6 @@ module ModParameters
     integer             ::      rLevelInitial
 
     integer             ::      Multigrid_nLevels
+
+    logical             ::      DoCheck=.false.
 end module ModParameters

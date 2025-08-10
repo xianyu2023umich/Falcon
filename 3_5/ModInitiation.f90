@@ -4,11 +4,21 @@ module ModInitiation
     use ModYinYang,     only:   ModYinyang_CoordConv_0D,&
                                 ModYinYang_VecConv_0D
     use ModYinYangTree, only:   YYTree
-    use ModParameters,  only:   r_range,ni,nj,nk,ng,&
-                                rSave,nthSavePlot,nphSavePlot
+    use ModParameters,  only:   r_range,ni,nj,nk,ng,Initiation_type_index
     use ModConst,       only:   dpi
     use ModVariables,   only:   vr_,vt_,vp_
     contains
+
+    subroutine ModInitiation_DoAll(Tree)
+        implicit none
+        type(YYTree),target     ::  Tree
+
+        select case (Initiation_type_index)
+        case (1)
+            call ModInitiation_harmonic(Tree)
+        case default
+    end select
+    end subroutine
 
     subroutine ModInitiation_harmonic(Tree)
         
@@ -24,7 +34,7 @@ module ModInitiation
             do ip=-ng+1,ng+nk
                 do it=-ng+1,ng+nj
                     do ir=-ng+1,ng+ni
-                        Block1%primitive_IV(ir,it,ip,:)=1.000000
+                        Block1%primitive_IV(ir,it,ip,:)=0.000000
                         coord=[Block1%xi_I(ir),Block1%xj_I(it),Block1%xk_I(ip)]
                         if (.not. Block1%if_yin) coord=ModYinyang_CoordConv_0D(coord)
                         vec=sin(dpi*(coord(1)-r_range(1))/(r_range(2)-r_range(1)))*[1.,1.,1.]*1.e-2*&

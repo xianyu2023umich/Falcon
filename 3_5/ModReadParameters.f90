@@ -3,9 +3,9 @@ module ModReadParameters
     use ModParameters,      only:   r_range,ni,nj,nk,ng,nvar,&
                                     ModelS_delta,ModelS_c_sound__CGS,&
                                     ModelS_rmax,ModelS_dc_type,ModelS_dc_rmax,ModelS_filename,&
-                                    nStepsSavePlot,nthSavePlot,nphSavePlot,nSteps,rSave,CFL,&
-                                    ModelS_heating_ratio,NameEquation,Initiation_type,&
-                                    Initiation_type_index,rLevelInitial,iGeometry
+                                    nSteps,CFL,ModelS_heating_ratio,NameEquation,Initiation_type,&
+                                    Initiation_type_index,rLevelInitial,iGeometry,DoCheck,&
+                                    Plots,nPlots,PlotType
     use ModStratification,  only:   ModStratification_read_lookuptable,ModStratification_DoAll
     use ModAMR,             only:   AMR_nLevels,AMR_r_ranges,AMR_rtp_if_divide
     use ModVariables,       only:   rho1_,vr_,vt_,vp_,br_,bt_,bp_,s1_
@@ -187,26 +187,8 @@ module ModReadParameters
                     end if
 
                 case("#SAVEPLOT")
-                    read(logical_unit, *, iostat=ios) nStepsSavePlot
-                    if (ios/=0) then
-                        write(*,*) "Error from ",name_sub,": Error reading nStepsSavePlot"
-                        stop 1
-                    end if
-                    read(logical_unit, *, iostat=ios) rSave
-                    if (ios/=0) then
-                        write(*,*) "Error from ",name_sub,": Error reading rSave"
-                        stop 1
-                    end if
-                    read(logical_unit, *, iostat=ios) nthSavePlot
-                    if (ios/=0) then
-                        write(*,*) "Error from ",name_sub,": Error reading nthSavePlot"
-                        stop 1
-                    end if
-                    read(logical_unit, *, iostat=ios) nphSavePlot
-                    if (ios/=0) then
-                        write(*,*) "Error from ",name_sub,": Error reading nphSavePlot"
-                        stop 1
-                    end if
+                    call ModReadParameters_read_SavePlot(logical_unit)
+                    
 
                 case("#TIMESTEPPING")
                     read(logical_unit, *, iostat=ios) CFL
@@ -260,10 +242,156 @@ module ModReadParameters
                         write(*,*) "Error from ",name_sub,": Error reading iGeometry"
                         stop 1
                     end if
+
+                case("#DOCHECK")
+                    read(logical_unit, *, iostat=ios) DoCheck
+                    if (ios/=0) then
+                        write(*,*) "Error from ",name_sub,": Error reading DoCheck"
+                        stop 1
+                    end if
+
+                case default
+                    write(*,*) "Error from ",name_sub,": Unknown command: ",trim(adjustl(line))
+                    stop 1
                 end select
             end if
         end do
 
         close(logical_unit)
     end subroutine ModReadParameters_read
+
+    subroutine ModReadParameters_read_SavePlot(logical_unit)
+        implicit none
+        character(len=31)               ::  name_sub='ModReadParameters_read_SavePlot'
+        integer,intent(in)              ::  logical_unit
+        integer                         ::  ios                 ! For reading
+        integer                         ::  iPlot               ! For reading Plots
+        type(PlotType),pointer          ::  Plot1
+        integer                         ::  idirection          ! For reading rtp_range_SavePlot
+
+        ! Read nPlots
+        read(logical_unit, *, iostat=ios) nPlots
+        if (ios/=0) then
+            write(*,*) "Error from ",name_sub,": Error reading nPlots"
+            stop 1
+        end if
+
+        ! Allocate Plots
+        allocate(Plots(nPlots))
+
+        ! Read each plot
+        do iPlot=1,nPlots
+            Plot1=>Plots(iPlot)
+            Plot1%logical_unit=10+iPlot
+
+            ! First see which type it is
+            read(logical_unit, *, iostat=ios) Plot1%charType
+            if (ios/=0) then
+                write(*,*) "Error from ",name_sub,": Error reading charType=",trim(adjustl(Plot1%charType))
+                stop 1
+            end if
+
+            ! Then see if this type is supported. If so then set the iType
+            ! and continue reading.
+            select case(Plot1%charType)
+
+
+            ! For the sphere, we need the nStepsSavePlot, rSave, nthSavePlot, nphSavePlot
+            case("sphere","Sphere","SPHERE")
+                Plot1%iType=0
+                
+                read(logical_unit, *, iostat=ios) Plot1%nStepsSavePlot
+                if (ios/=0) then
+                    write(*,*) "Error from ",name_sub,": Error reading nStepsSavePlot"
+                    stop 1
+                end if
+                read(logical_unit, *, iostat=ios) Plot1%rtp_SavePlot(1)
+                if (ios/=0) then
+                    write(*,*) "Error from ",name_sub,": Error reading rSave"
+                    stop 1
+                end if
+                read(logical_unit, *, iostat=ios) Plot1%nrtp_SavePlot(2)
+                if (ios/=0) then
+                    write(*,*) "Error from ",name_sub,": Error reading nthSavePlot"
+                    stop 1
+                end if
+                read(logical_unit, *, iostat=ios) Plot1%nrtp_SavePlot(3)
+                if (ios/=0) then
+                    write(*,*) "Error from ",name_sub,": Error reading nphSavePlot"
+                    stop 1
+                end if
+
+            ! For the fan, we need the nStepsSavePlot, r_range, nrSavePlot, nthSavePlot, phSave
+            case("fan","Fan","FAN")
+                Plot1%iType=1
+                read(logical_unit, *, iostat=ios) Plot1%nStepsSavePlot
+                if (ios/=0) then
+                    write(*,*) "Error from ",name_sub,": Error reading nStepsSavePlot"
+                    stop 1
+                end if
+                read(logical_unit, *, iostat=ios) Plot1%rtp_range_SavePlot(1,1)
+                if (ios/=0) then
+                    write(*,*) "Error from ",name_sub,": Error reading r_range_SavePlot(1)"
+                    stop 1
+                end if
+                read(logical_unit, *, iostat=ios) Plot1%rtp_range_SavePlot(1,2)
+                if (ios/=0) then
+                    write(*,*) "Error from ",name_sub,": Error reading r_range_SavePlot(2)"
+                    stop 1
+                end if
+                read(logical_unit, *, iostat=ios) Plot1%nrtp_SavePlot(1)
+                if (ios/=0) then
+                    write(*,*) "Error from ",name_sub,": Error reading nrSavePlot"
+                    stop 1
+                end if
+                read(logical_unit, *, iostat=ios) Plot1%nrtp_SavePlot(2)
+                if (ios/=0) then
+                    write(*,*) "Error from ",name_sub,": Error reading nthSavePlot"
+                    stop 1
+                end if
+                read(logical_unit, *, iostat=ios) Plot1%rtp_SavePlot(3)
+                if (ios/=0) then
+                    write(*,*) "Error from ",name_sub,": Error reading phSave"
+                    stop 1
+                end if
+
+            ! For the cube, we need:
+            ! nStepsSavePlot, 
+            ! r_range, nrSavePlot
+            ! th_range, nthSavePlot
+            ! ph_range, nphSavePlot
+            case("cube","Cube","CUBE")
+                Plot1%iType=2
+                read(logical_unit, *, iostat=ios) Plot1%nStepsSavePlot
+                if (ios/=0) then
+                    write(*,*) "Error from ",name_sub,": Error reading nStepsSavePlot"
+                    stop 1
+                end if
+                do idirection=1,3
+                    read(logical_unit, *, iostat=ios) Plot1%rtp_range_SavePlot(idirection,1)
+                    if (ios/=0) then
+                        write(*,*) "Error from ",name_sub,": Error reading rtp_range_SavePlot(",idirection,",1)"
+                        stop 1
+                    end if
+                    read(logical_unit, *, iostat=ios) Plot1%rtp_range_SavePlot(idirection,2)
+                    if (ios/=0) then
+                        write(*,*) "Error from ",name_sub,": Error reading rtp_range_SavePlot(",idirection,",2)"
+                        stop 1
+                    end if
+                    read(logical_unit, *, iostat=ios) Plot1%nrtp_SavePlot(idirection)
+                    if (ios/=0) then
+                        write(*,*) "Error from ",name_sub,": Error reading nrtp_SavePlot(",idirection,")"
+                        stop 1
+                    end if
+                end do
+            case default
+                write(*,*) "Error from ",name_sub,": Unknown plot type: ",trim(adjustl(Plots(iPlot)%charType))
+                stop 1
+            end select
+
+            
+            
+        end do
+
+    end subroutine ModReadParameters_read_SavePlot
 end module ModReadParameters

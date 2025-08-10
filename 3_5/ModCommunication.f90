@@ -48,26 +48,26 @@ module ModCommunication
             call ModGC_GetGC_Targets_single(Tree,Block1)
         end do
         call MPI_BARRIER(MPI_COMM_WORLD,ierr)
-        if (MpiRank==0) write(*,*)'Completed setting GC_targets...',MpiRank
+        if (MpiRank==0) write(*,*)'Completed setting GC_targets...'
 
         ! Then set the GC_sources for each block
         call ModCommunication_GetnGC_sources(Tree)
         call MPI_BARRIER(MPI_COMM_WORLD,ierr)
-        if (MpiRank==0) write(*,*)'Completed setting nGC_sources...',MpiRank      
+        if (MpiRank==0) write(*,*)'Completed setting nGC_sources...'
 
         ! Then set the GC_sources for each block
         call ModCommunication_SetGC_sources(Tree)
         call MPI_BARRIER(MPI_COMM_WORLD,ierr)
-        if (MpiRank==0) write(*,*)'Completed setting GC_sources...',MpiRank
+        if (MpiRank==0) write(*,*)'Completed setting GC_sources...'
 
         ! Setting up GC senders and receivers
         call ModCommunication_SetGC_Sender(Tree)
         call MPI_BARRIER(MPI_COMM_WORLD,ierr)
-        if (MpiRank==0) write(*,*)'Completed setting GC_senders...',MpiRank
+        if (MpiRank==0) write(*,*)'Completed setting GC_senders...'
 
         call ModCommunication_SetGC_Receiver(Tree)
         call MPI_BARRIER(MPI_COMM_WORLD,ierr)
-        if (MpiRank==0) write(*,*)'Completed setting GC_receivers...',MpiRank
+        if (MpiRank==0) write(*,*)'Completed setting GC_receivers...'
 
         if (if_HC) then
             ! Initialize multigrid

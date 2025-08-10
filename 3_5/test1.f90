@@ -1,22 +1,16 @@
 program test1
 
-    ! This module tests if communications work.
-
     use ModBlock,           only:   BlockType
-    use ModParameters,      only:   MpiSize, MpiRank, r_range, ni, nj, nk, ng,iGeometry,&
-                                    nStepsSavePlot,CFL,rSave,r_range,nSteps
+    use ModParameters,      only:   MpiSize, MpiRank, r_range,&
+                                    CFL,nSteps,DoCheck
     use ModReadParameters,  only:   ModReadParameters_read
     use ModYinYangTree,     only:   YYTree, YinYangTree_InitTree, YinYangTree_SetAll, YinYangTree_DivideAll
     use ModCommunication,   only:   ModCommunication_SetGCAll
-    !use ModPFSS,            only:   ModPFSS_setup, ModPFSS_solve
-    !use ModMagnetogram,     only:   ModMagnetogram_dipole_magnetogram_ALL
-    use ModInitiation,      only:   ModInitiation_harmonic
-    !use ModVariables,       only:   rho1_,vr_,vt_,vp_,s1_
-    use ModSavePlot,        only:   ModSave_Globe
+    use ModInitiation,      only:   ModInitiation_DoAll
+    use ModSavePlot,        only:   ModSave_DoAll
     use ModCheck,           only:   ModCheck_primitive
     use ModAdvance,         only:   ModAdvance_rk4
     use ModAMR,             only:   ModAMR_set_grid
-    use ModStratification,  only:   ModStratification_DoAll
     use MPI
 
     implicit none
@@ -27,9 +21,6 @@ program test1
     character(len=8)        ::  iStep_char
     real                    ::  dt                          ! Time step
     integer                 ::  i
-    logical                 ::  do_check=.true.
-    !integer                 ::  iBlock
-    !type(BlockType),pointer ::  Block1
 
     ! Initiate MPI and get MpiSize/Rank
     call MPI_INIT(ierr)
@@ -38,33 +29,20 @@ program test1
 
     ! Read parameters. Do initiation
     call ModReadParameters_read('PARAM.in',1)
-    write(*,*)'Parameters read.'
     call test1_INITIATION
-
-    !call ModInitiation_harmonic(Tree)
-
-    !print *,maxval(Tree%LocalBlocks(1)%Xi_rsst_III),minval(Tree%LocalBlocks(1)%Xi_rsst_III)
 
     ! Main loop
     do iStep=1,nSteps
-
-        ! Check if there is NaN
-        !if (do_check) call ModCheck_primitive(Tree,)
 
         ! Advance
         call ModAdvance_rk4(Tree,CFL,.True.,dt)
         if(MpiRank==0)print *,'Complete Advancing at iStep=',iStep,'dt=',dt
 
-        ! Write plot
-        write(iStep_char,'(I8)')iStep
-        if (mod(iStep,nStepsSavePlot)==0 .and. iStep>-2400) then
+        ! Check if there is NaN
+        if (DoCheck) call ModCheck_primitive(Tree,.false.)
 
-            ! Get the filename and save the plot.
-            do i=1,len_trim(iStep_char)
-                if (iStep_char(i:i)==' ') iStep_char(i:i)='0'
-            end do
-            call ModSave_Globe(Tree,0.8,[180,360],'test1_'//iStep_char//'.dat',10)
-        end if
+        ! Save plot
+        call ModSave_DoAll(Tree,iStep)
     end do
 
     call MPI_FINALIZE(ierr)
@@ -83,8 +61,12 @@ program test1
         
         ! Set up ghost cells
         call ModCommunication_SetGCAll(Tree,.false.)
+
+        ! Do initiation
+        call ModInitiation_DoAll(Tree)
         
-        if (MpiRank==0) print *,'Tree%NumLeafNodes=',Tree%NumLeafNodes
-        print *,'MpiRank=',MpiRank,' has ',Tree%nLocalBlocks,' blocks'
+        if (MpiRank==0 .or. MpiRank==MpiSize-1) then
+            print *,'Tree%NumLeafNodes=',Tree%NumLeafNodes,'MpiRank=',MpiRank,' has ',Tree%nLocalBlocks,' blocks'
+        end if
     end subroutine test1_INITIATION
 end program
