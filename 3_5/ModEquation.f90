@@ -82,8 +82,6 @@ module ModEquation
         ! EQN s1_ heating
         EQN_update_R(:,:,:,s1_)=EQN_update_R(:,:,:,s1_)+&
             ModelS_heating_ratio*(Block1%total_heat_III(1:ni,1:nj,1:nk))/Block1%rho0T0_III(1:ni,1:nj,1:nk)
-
-        call ModDiffusion_Aritificial_1(Block1,EQN_update_R,2,if_rk)
     end subroutine ModEquation_Dynamo_HD
     
     subroutine ModEquation_CORONA_V1(Block1,if_rk,EQN_update_R)
