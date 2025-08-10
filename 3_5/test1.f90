@@ -19,7 +19,6 @@ program test1
     integer                 ::  ierr                        ! For MPI
     integer                 ::  iStep                       ! For step
     real                    ::  dt                          ! Time step
-    integer                 ::  i
 
     ! Initiate MPI and get MpiSize/Rank
     call MPI_INIT(ierr)
