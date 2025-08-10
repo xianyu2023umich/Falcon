@@ -48,7 +48,7 @@ module ModSavePlot
                         Plot1%rtp_SavePlot(3),[Plot1%nrtp_SavePlot(1),Plot1%nrtp_SavePlot(2)],&
                         'Fan_'//iStep_char//'.dat',Plot1%logical_unit)
                 case(2)
-                    call ModSave_Cube(Tree,&
+                    call ModSave_Cube_MPI_Reduce(Tree,&
                         Plot1%rtp_range_SavePlot(1,:),Plot1%nrtp_SavePlot,&
                         'Cube_'//iStep_char//'.dat',Plot1%logical_unit)
                 end select
@@ -56,7 +56,114 @@ module ModSavePlot
         end do
     end subroutine ModSave_DoAll
 
-    subroutine ModSave_Cube(Tree,r_save_range,nrtp_out,filename,logical_unit)
+    ! It's probably better to use MPI_Reduce to save the data.
+
+    subroutine ModSave_Cube_MPI_Reduce(Tree,r_save_range,nrtp_out,filename,logical_unit)
+        implicit none
+        type(YYTree),intent(in),target      ::  Tree
+        real,intent(in)                     ::  r_save_range(2)
+        integer,intent(in)                  ::  nrtp_out(3)
+        character(len=*),intent(in)         ::  filename
+        integer,intent(in)                  ::  logical_unit
+        integer                             ::  iLocalBlock
+        type(BlockType),pointer             ::  Block1
+
+        integer                             ::  MpiRank,MpiSubRank,MpiSubSize
+        logical                             ::  if_inside_single
+        integer                             ::  if_join,MPI_COMM_SAVE_SUBSET,ierr
+
+        integer                             ::  ir,it,ip
+        real                                ::  save_primitive_layer_III_local(nvar,nrtp_out(2),nrtp_out(3)),&
+                                                save_primitive_layer_III_global(nvar,nrtp_out(2),nrtp_out(3))
+        real,allocatable                    ::  save_primitive_IV(:,:,:,:)
+        real                                ::  write_xyz(3)
+        real                                ::  r_out(nrtp_out(1)),t_out(nrtp_out(2)),p_out(nrtp_out(3))
+
+        ! MPI set up
+        call MPi_Comm_rank(MPI_COMM_WORLD,MpiRank, ierr)
+
+        ! Get the r, th and ph lists
+        do ir=1,nrtp_out(1)
+            r_out(ir)=((ir-1.0)*r_save_range(2)+&
+                (nrtp_out(1)-ir)*r_save_range(1))/(nrtp_out(1)-1.0)
+        end do
+        do it=1,nrtp_out(2)
+            t_out(it)=(it-0.50)/nrtp_out(2)*dpi
+        end do
+        do ip=1,nrtp_out(3)
+            p_out(ip)=(ip-0.50)/nrtp_out(3)*dpi*2-dpi
+        end do
+
+        ! Allocate the IV at the first layer by rank 0.
+        if (MpiRank==0) allocate(save_primitive_IV(nvar,nrtp_out(1),nrtp_out(2),nrtp_out(3)))
+
+        ! Mpi_reduce each layer so that each time it's not that large.
+        do ir=1,nrtp_out(1)
+
+            ! Initialize the variables
+            ! Rank 0 ALWAYS join, because it's the rank to perform saving.
+            if_join=MPI_UNDEFINED
+            if (MpiRank==0) if_join=1
+
+            save_primitive_layer_III_local=-1.e30
+            save_primitive_layer_III_global=0.
+
+            ! Loop each block to 1. fulfill the layer III and 2. see if it's inside the block.
+            do iLocalBlock=1,size(Tree%LocalBlocks)
+                Block1=>Tree%LocalBlocks(iLocalBlock)
+                call ModSave_Globe_single(Block1,r_out(ir),nrtp_out(2:3),t_out,p_out,&
+                    save_primitive_layer_III_local,if_inside_single)
+                
+                if (if_inside_single) if_join=1
+            end do
+
+            ! Get the new communicator
+
+            call MPI_Comm_split(MPI_COMM_WORLD, if_join, MpiRank, MPI_COMM_SAVE_SUBSET, ierr)
+
+            ! Reduce this layer to the root
+
+            if (if_join==1) then
+                call MPI_Comm_rank(MPI_COMM_SAVE_SUBSET,MpiSubRank,ierr)
+                call MPI_Comm_size(MPI_COMM_SAVE_SUBSET,MpiSubSize,ierr)
+
+                call MPI_Reduce(save_primitive_layer_III_local,save_primitive_layer_III_global,&
+                    nvar*nrtp_out(2)*nrtp_out(3),&
+                    MPI_REAL, MPI_MAX, 0, MPI_COMM_SAVE_SUBSET, ierr)
+
+                ! Save the data to the IV
+                if (MpiRank==0 .and. allocated(save_primitive_IV)) &
+                    save_primitive_IV(:,ir,:,:)=save_primitive_layer_III_global
+
+                ! Free the communicator
+                call MPI_Comm_free(MPI_COMM_SAVE_SUBSET,ierr)
+            end if            
+        end do
+
+        if (MpiRank==0 .and. allocated(save_primitive_IV)) then
+            open(unit=logical_unit,file=filename, status='replace', action='write')
+            write(logical_unit,*) 'TITLE = "Cube"'
+            write(logical_unit,*) 'VARIABLES = "K", "J", "I", "X", "Y", "Z", "Rho1", "Vr", "Vt", "Vp", "S1"'
+            write(logical_unit,*) 'ZONE T="STRUCTURE GRID", I=', nrtp_out(1),&
+             ', J=', nrtp_out(2), ', K=', nrtp_out(3), ', F=POINT'
+
+            do ip=1,nrtp_out(3)
+                do it=1,nrtp_out(2)
+                    do ir=1,nrtp_out(1)
+                        write_xyz(1)=r_out(ir)*sin(t_out(it))*cos(p_out(ip))
+                        write_xyz(2)=r_out(ir)*sin(t_out(it))*sin(p_out(ip))
+                        write_xyz(3)=r_out(ir)*cos(t_out(it))
+
+                        write(logical_unit,'(3I5,8ES16.8)') ir,it,ip,write_xyz,save_primitive_IV(:,ir,it,ip)
+                    end do
+                end do
+            end do
+            close(logical_unit)
+            print *,'File='//filename,', saved.'
+        end if
+    end subroutine ModSave_Cube_MPI_Reduce
+
+    subroutine ModSave_Cube_MPI_Accumulate(Tree,r_save_range,nrtp_out,filename,logical_unit)
         implicit none
         type(YYTree),intent(in),target      ::  Tree
         real,intent(in)                     ::  r_save_range(2)
@@ -186,7 +293,7 @@ module ModSavePlot
             close(logical_unit)
             print *,'File='//filename,', saved.'
         end if
-    end subroutine ModSave_Cube
+    end subroutine ModSave_Cube_MPI_Accumulate
 
     subroutine ModSave_Globe_MPI_Accumulate(Tree,r_save,ntp_out,filename,logical_unit)
         implicit none
