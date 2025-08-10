@@ -25,7 +25,6 @@ module ModPFSS
         type(Multigrid_level),pointer   ::  MGL1
         type(BlockType),pointer         ::  Block1
         integer                         ::  iBlock,iLevel
-        integer                         ::  j,k
 
         ! First setup b
         ! b should be Br (magnetogram) times the area of the face.
@@ -108,7 +107,7 @@ module ModPFSS
         integer,intent(in)              ::  i_option
 
         type(BlockType),pointer         ::  Block1
-        integer                         ::  iBlock,iLevel
+        integer                         ::  iBlock
 
         ! Solve using Multigrid preconditioned conjugate gradient.
 

@@ -27,8 +27,6 @@ module ModAdvance
 
         real                                ::  dt_local,dt_global          ! dt
         integer                             ::  ierr
-        real                                ::  time_start,time_end
-        !integer :: i,j,k
 
         if (br_>0) then
             !call ModTimeStep_Dynamo_MHD(Tree,CFL_ad,dt_local)

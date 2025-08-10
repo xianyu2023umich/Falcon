@@ -164,6 +164,8 @@ module ModYinYangTree
         real                        ::  r_middle
         real                        ::  rtp_range1(3,2)     ! rtp range of child
 
+        r_middle=0.0
+
         if (Node%if_leaf) then
 
             ! Every time a new divide is performed,

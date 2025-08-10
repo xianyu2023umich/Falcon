@@ -53,7 +53,7 @@ module ModBlock
         real,allocatable                ::  Az_LLL(:,:,:)
 
         ! HC
-        real,allocatable                ::  HC_iBlock_III(:,:,:)
+        integer,allocatable             ::  HC_iBlock_III(:,:,:)
         integer                         ::  nHC_targets,nHC_sources
         type(GC_target),allocatable     ::  HC_targets(:)
         type(GC_target),allocatable     ::  HC_sources(:)

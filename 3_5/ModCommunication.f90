@@ -122,7 +122,7 @@ module ModCommunication
         integer                         ::  iLocalBlock,iGC_target,iGC_source
         integer                         ::  iRecv,nRecv
         integer,allocatable             ::  send_message_all(:),recv_message_all(:)
-        integer                         ::  ierr,request,status(MPI_STATUS_SIZE)
+        integer                         ::  ierr
         integer                         ::  nSend,iSend
         integer,allocatable             ::  requests_send(:),requests_recv(:)
         
@@ -274,7 +274,7 @@ module ModCommunication
         integer                         ::  iSend,iRecv,nSend,nRecv
         integer,allocatable             ::  requests_send(:),requests_recv(:)
 
-        integer                         ::  tag,ierr,status(MPI_STATUS_SIZE)
+        integer                         ::  tag,ierr
 
         ! xijk_list
 
@@ -1228,7 +1228,7 @@ module ModCommunication
         integer                         ::  iGC_sender,iGC_receiver
         type(GC_interface),pointer      ::  GC_Sender1,GC_Receiver1
         integer                         ::  iofBlock_pair
-        integer                         ::  ierr,status(MPI_STATUS_SIZE)
+        integer                         ::  ierr
         integer,allocatable             ::  requests_send(:),requests_recv(:)
 
         ! Before getting the message in the GC_senders we need to interpolate the

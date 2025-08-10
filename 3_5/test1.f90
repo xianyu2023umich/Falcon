@@ -18,7 +18,6 @@ program test1
     type(YYTree),target     ::  Tree                        ! The Tree
     integer                 ::  ierr                        ! For MPI
     integer                 ::  iStep                       ! For step
-    character(len=8)        ::  iStep_char
     real                    ::  dt                          ! Time step
     integer                 ::  i
 
