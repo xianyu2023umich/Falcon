@@ -10,6 +10,13 @@ module ModParameters
         integer         ::      nrtp_SavePlot(3)          
     end type PlotType
 
+    type AMRType
+        integer         ::      iLevel
+        logical         ::      rtp_if_divide(3)
+        logical         ::      if_global
+        real            ::      rtp_range(3,2)
+    end type AMRType
+
     integer             ::      MpiSize,MpiRank             !   MPI
 
     integer             ::      iGeometry                   !   0 is cartesian, 1 is spherical
@@ -47,4 +54,10 @@ module ModParameters
     integer             ::      Multigrid_nLevels
 
     logical             ::      DoCheck=.false.
+
+    integer             ::      nAMRs
+    type(AMRType),&
+        allocatable,&
+        target          ::  AMRs(:)
+    
 end module ModParameters

@@ -1,14 +1,10 @@
 module ModAMR
 
     use ModMath,        only:   ModMath_IfLinesInterSect
-    use ModParameters,  only:   rLevelInitial
+    use ModParameters,  only:   rLevelInitial,nAMRs,AMRs,AMRType
     use ModYinYangTree, only:   YYTree,TreeNode,&
                                 YinYangTree_Divide,&
                                 YinYangTree_Divide_r
-
-    integer             ::      AMR_nLevels,AMR_iLevel
-    real,allocatable    ::      AMR_r_ranges(:,:)
-    logical,allocatable ::      AMR_rtp_if_divide(:,:)
 
     contains
 
@@ -16,16 +12,18 @@ module ModAMR
     subroutine ModAMR_set_grid(Tree)
         implicit none
         type(YYTree),target     ::  Tree
+        integer                 ::  iAMR
 
         ! the first step is to set r grid.
         call ModAMR_Divide_r_grid(Tree)
         
-        ! Loop AMR_nLevels times
-        ! for appropriate AMR_nLevels values
-        if (AMR_nLevels>0 .and. AMR_nLevels<=16) then
+        ! Loop nAMRs times
+        ! for appropriate nAMRs values
+        if (nAMRs>0 .and. nAMRs<=16) then
             
-            do AMR_iLevel=1,AMR_nLevels
-                call ModAMR_DivideAll(Tree,[AMR_rtp_if_divide(AMR_iLevel,:)])
+            do iAMR=1,nAMRs
+                call ModAMR_Divide_OneBranch(Tree,Tree%Yin,iAMR)
+                call ModAMR_Divide_OneBranch(Tree,Tree%Yang,iAMR)
             end do
         end if
     end subroutine ModAMR_set_grid
@@ -62,32 +60,39 @@ module ModAMR
         end if
     end subroutine ModAMR_Divide_r_grid_OneBranch
 
-    ! Perform division for one AMR_iLevel
-    subroutine ModAMR_DivideAll(Tree,rtp_if_divide)
-        implicit none
-        type(YYTree)                ::  Tree
-        logical,intent(in)          ::  rtp_if_divide(3)
-
-        call ModAMR_Divide_OneBranch(Tree,Tree%Yin,rtp_if_divide)
-        call ModAMR_Divide_OneBranch(Tree,Tree%Yang,rtp_if_divide)
-    end subroutine ModAMR_DivideAll
-
     ! Perform division for one AMR_iLevel on one branch
-    recursive subroutine ModAMR_Divide_OneBranch(Tree,Node,rtp_if_divide)
+    recursive subroutine ModAMR_Divide_OneBranch(Tree,Node,iAMR)
         implicit none
         type(YYTree)                ::  Tree
         type(TreeNode),target       ::  Node
-        logical,intent(in)          ::  rtp_if_divide(3)
+        integer,intent(in)          ::  iAMR
+        type(AMRType),pointer       ::  AMR1
 
         integer                     ::  iChild
 
+        AMR1=>AMRs(iAMR)
+
         if (Node%if_leaf) then
-            if (ModMath_IfLinesInterSect(Node%rtp_range(1,:),AMR_r_ranges(:,AMR_iLevel))) &
-                call YinYangTree_Divide(Tree,Node,rtp_if_divide)
+            ! If it's global, then we only need to check if the 
+            ! block's r_range intersects with the AMR range.
+            ! If it's not global, then the AMR is only done for blocks that:
+            ! 1. If_yin=.true.
+            ! 2. rtp_range intersects with the AMR rtp_range.
+            if (AMR1%if_global) then
+                if (ModMath_IfLinesInterSect(Node%rtp_range(1,:),AMR1%rtp_range(1,:))) &
+                    call YinYangTree_Divide(Tree,Node,AMR1%rtp_if_divide(1:3))
+            else
+                if (Node%if_yin) then
+                    if (ModMath_IfLinesInterSect(Node%rtp_range(1,:),AMR1%rtp_range(1,:)) .and. &
+                        ModMath_IfLinesInterSect(Node%rtp_range(2,:),AMR1%rtp_range(2,:)) .and. &
+                        ModMath_IfLinesInterSect(Node%rtp_range(3,:),AMR1%rtp_range(3,:))) &
+                        call YinYangTree_Divide(Tree,Node,AMR1%rtp_if_divide(1:3))
+                end if
+            end if
         else
             do iChild=1,size(Node%Children)
                 call ModAMR_Divide_OneBranch(Tree,&
-                    Node%Children(iChild),rtp_if_divide)
+                    Node%Children(iChild),iAMR)
             end do
         end if
     end subroutine ModAMR_Divide_OneBranch

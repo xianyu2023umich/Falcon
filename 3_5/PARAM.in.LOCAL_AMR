@@ -12,7 +12,7 @@
 2               ng
 
 #RADIALGRID
-1
+0
 
 #ARTIFICIALCOOLING
 0.99            rmax
@@ -40,9 +40,23 @@ T               if_global
 0.90            rmin
 1.0             rmax
 F T T           rtp_if_divide
-T               if_global
+F               if_global
 0.93            rmin
 1.0             rmax
+1.56            thmin
+1.59            thmax
+-0.01           phmin
+0.01            phmax
+F T T           rtp_if_divide
+F               if_global
+0.96            rmin
+1.0             rmax
+1.56            thmin
+1.59            thmax
+-0.01           phmin
+0.01            phmax
+
+
 
 #SAVEPLOT
 1               nPlots

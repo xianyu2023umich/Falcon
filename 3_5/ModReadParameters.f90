@@ -5,9 +5,8 @@ module ModReadParameters
                                     ModelS_rmax,ModelS_dc_type,ModelS_dc_rmax,ModelS_filename,&
                                     nSteps,CFL,ModelS_heating_ratio,NameEquation,Initiation_type,&
                                     Initiation_type_index,rLevelInitial,iGeometry,DoCheck,&
-                                    Plots,nPlots,PlotType
+                                    Plots,nPlots,PlotType,nAMRs,AMRs,AMRType
     use ModStratification,  only:   ModStratification_read_lookuptable,ModStratification_DoAll
-    use ModAMR,             only:   AMR_nLevels,AMR_r_ranges,AMR_rtp_if_divide
     use ModVariables,       only:   rho1_,vr_,vt_,vp_,br_,bt_,bp_,s1_
 
     contains
@@ -19,7 +18,6 @@ module ModReadParameters
         character(len=22)               ::  name_sub='ModReadParameters_read'
         integer,intent(in)              ::  logical_unit
         integer                         ::  ios                 ! For reading
-        integer                         ::  AMR_iLevel          ! For reading AMR
 
         ! Open the input file
         open(logical_unit, file=filename, status='old', action='read', iostat=ios)
@@ -139,44 +137,7 @@ module ModReadParameters
                 
                 ! AMR grid
                 case("#AMR")
-                    read(logical_unit, *, iostat=ios) AMR_nLevels
-                    if (ios/=0) then
-                        write(*,*) "Error from ",name_sub,": Error reading AMR_nLevels"
-                        stop 1
-                    end if
-                    if (AMR_nLevels<0) then
-                        write(*,*) "Error from ",name_sub,": Incorrect AMR_nLevels=",AMR_nLevels
-                        stop 1
-                    end if
-                    if (AMR_nLevels>16) then
-                        write(*,*) "Error from ",name_sub,": Too large AMR_nLevels=",AMR_nLevels
-                        stop 1
-                    end if
-
-                    ! For a proper AMR_nLevels loop to read the AMR range.
-                    if (AMR_nLevels>=1) then
-                        ! First allocate
-                        allocate(AMR_r_ranges(2,AMR_nLevels))
-                        allocate(AMR_rtp_if_divide(AMR_nLevels,3))
-
-                        do AMR_iLevel=1,AMR_nLevels
-                            read(logical_unit, *, iostat=ios) AMR_rtp_if_divide(AMR_iLevel,1:3)
-                            if (ios/=0) then
-                                write(*,*) "Error from ",name_sub,": Error reading AMR_if_divide_r(AMR_iLevel)"
-                                stop 1
-                            end if
-                            read(logical_unit, *, iostat=ios) AMR_r_ranges(1,AMR_iLevel)
-                            if (ios/=0) then
-                                write(*,*) "Error from ",name_sub,": Error reading AMR_r_ranges(1,AMR_iLevel)"
-                                stop 1
-                            end if
-                            read(logical_unit, *, iostat=ios) AMR_r_ranges(2,AMR_iLevel)
-                            if (ios/=0) then
-                                write(*,*) "Error from ",name_sub,": Error reading AMR_r_ranges(2,AMR_iLevel)"
-                                stop 1
-                            end if
-                        end do
-                    end if
+                    call ModReadParameters_read_AMR(logical_unit)
 
                 ! When to stop
                 case("#STOP")
@@ -388,10 +349,84 @@ module ModReadParameters
                 write(*,*) "Error from ",name_sub,": Unknown plot type: ",trim(adjustl(Plots(iPlot)%charType))
                 stop 1
             end select
-
-            
-            
         end do
 
     end subroutine ModReadParameters_read_SavePlot
+
+    subroutine ModReadParameters_read_AMR(logical_unit)
+        implicit none
+        character(len=31)               ::  name_sub='ModReadParameters_read_AMR'
+        integer,intent(in)              ::  logical_unit
+        integer                         ::  ios                 ! For reading
+        integer                         ::  iAMR                ! For reading AMR
+        integer                         ::  idirection          ! For reading rtp_range
+        type(AMRType),pointer           ::  AMR1
+        
+        ! Read nAMRs
+        read(logical_unit, *, iostat=ios) nAMRs
+        if (ios/=0) then
+            write(*,*) "Error from ",name_sub,": Error reading nAMRs"
+            stop 1
+        end if
+        if (nAMRs<0) then
+            write(*,*) "Error from ",name_sub,": Incorrect nAMRs=",nAMRs
+            stop 1
+        end if
+        if (nAMRs>16) then
+            write(*,*) "Error from ",name_sub,": Too many nAMRs=",nAMRs
+            stop 1
+        end if
+
+        ! For a proper nAMRs loop to read the AMR range.
+        if (nAMRs>=1) then
+            ! First allocate
+            allocate(AMRs(nAMRs))
+
+            ! Loop each AMR
+            do iAMR=1,nAMRs
+                AMR1=>AMRs(iAMR)
+
+                ! First read the rtp_if_divide
+                read(logical_unit, *, iostat=ios) AMR1%rtp_if_divide(1:3)
+                if (ios/=0) then
+                    write(*,*) "Error from ",name_sub,": Error reading AMR1%rtp_if_divide(1:3)"
+                    stop 1
+                end if
+
+                ! Then read if_global
+                read(logical_unit, *, iostat=ios) AMR1%if_global
+                if (ios/=0) then
+                    write(*,*) "Error from ",name_sub,": Error reading AMR1%if_global"
+                    stop 1
+                end if
+
+                ! If it's global, then we only need the r_range. Otherwise, we need the rtp_range.
+                if (AMR1%if_global) then
+                    read(logical_unit, *, iostat=ios) AMR1%rtp_range(1,1)
+                    if (ios/=0) then
+                        write(*,*) "Error from ",name_sub,": Error reading AMR1%rtp_range(1,1)"
+                        stop 1
+                    end if
+                    read(logical_unit, *, iostat=ios) AMR1%rtp_range(1,2)
+                    if (ios/=0) then
+                        write(*,*) "Error from ",name_sub,": Error reading AMR1%rtp_range(1,2)"
+                        stop 1
+                    end if
+                else
+                    do idirection=1,3
+                        read(logical_unit, *, iostat=ios) AMR1%rtp_range(idirection,1)
+                        if (ios/=0) then
+                            write(*,*) "Error from ",name_sub,": Error reading AMR1%rtp_range(",idirection,",1)"
+                            stop 1
+                        end if
+                        read(logical_unit, *, iostat=ios) AMR1%rtp_range(idirection,2)
+                        if (ios/=0) then
+                            write(*,*) "Error from ",name_sub,": Error reading AMR1%rtp_range(",idirection,",2)"
+                            stop 1
+                        end if
+                    end do
+                end if
+            end do
+        end if
+    end subroutine ModReadParameters_read_AMR
 end module ModReadParameters
