@@ -3,7 +3,7 @@ module ModReadParameters
     use ModParameters,      only:   r_range,ni,nj,nk,ng,nvar,&
                                     ModelS_delta,ModelS_c_sound__CGS,&
                                     ModelS_rmax,ModelS_dc_type,ModelS_dc_rmax,ModelS_filename,&
-                                    nSteps,CFL,ModelS_heating_ratio,NameEquation,Initiation_type,&
+                                    nSteps,CFL,ModelS_heating_ratio,NameEquation,iEquation,Initiation_type,&
                                     Initiation_type_index,rLevelInitial,iGeometry,DoCheck,&
                                     Plots,nPlots,PlotType,nAMRs,AMRs,AMRType
     use ModStratification,  only:   ModStratification_read_lookuptable,ModStratification_DoAll
@@ -166,26 +166,7 @@ module ModReadParameters
                     end if
 
                 case("#EQUATION")
-                    read(logical_unit, *, iostat=ios) NameEquation
-                    select case(NameEquation)
-                    case("MHD","mhd")
-                        nvar=8
-                        rho1_=1
-                        vr_=2
-                        vt_=3
-                        vp_=4
-                        br_=5
-                        bt_=6
-                        bp_=7
-                        s1_=8
-                    case("HD","hd")
-                        nvar=5
-                        rho1_=1
-                        vr_=2
-                        vt_=3
-                        vp_=4
-                        s1_=5
-                    end select
+                    call ModReadParameters_read_Equation(logical_unit)
 
                 case("#INITIATION")
                     read(logical_unit, *, iostat=ios) Initiation_type
@@ -429,4 +410,35 @@ module ModReadParameters
             end do
         end if
     end subroutine ModReadParameters_read_AMR
+
+    subroutine ModReadParameters_read_Equation(logical_unit)
+        implicit none
+        character(len=31)               ::  name_sub='ModReadParameters_read_Equation'
+        integer,intent(in)              ::  logical_unit
+        integer                         ::  ios                 ! For reading
+
+        ! Read the equation type
+        read(logical_unit, *, iostat=ios) NameEquation
+        select case(NameEquation)
+        case("MHD","mhd")
+            iEquation=1
+            nvar=8
+            rho1_=1
+            vr_=2
+            vt_=3
+            vp_=4
+            br_=5
+            bt_=6
+            bp_=7
+            s1_=8
+        case("HD","hd")
+            iEquation=0
+            nvar=5
+            rho1_=1
+            vr_=2
+            vt_=3
+            vp_=4
+            s1_=5
+        end select
+    end subroutine ModReadParameters_read_Equation
 end module ModReadParameters

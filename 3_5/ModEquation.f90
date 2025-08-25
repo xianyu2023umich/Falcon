@@ -11,7 +11,7 @@ module ModEquation
     use ModBoundary,     only:   ModBoundary_Dynamo_HD_primitives
 
     use ModParameters,  only:   ni,nj,nk,ng,nvar,ModelS_delta,ModelS_heating_ratio
-    use ModVariables,   only:   rho1_,vr_,vp_,s1_
+    use ModVariables,   only:   rho1_,vr_,vp_,s1_,br_,bt_,bp_
 
     implicit none
 
@@ -83,6 +83,98 @@ module ModEquation
         EQN_update_R(:,:,:,s1_)=EQN_update_R(:,:,:,s1_)+&
             ModelS_heating_ratio*(Block1%total_heat_III(1:ni,1:nj,1:nk))/Block1%rho0T0_III(1:ni,1:nj,1:nk)
     end subroutine ModEquation_Dynamo_HD
+
+    subroutine ModEquation_Dynamo_MHD(Block1,if_rk,EQN_update_R)
+        implicit none
+        type(BlockType),target      ::  Block1                      
+        logical,intent(in)          ::  if_rk
+        real,pointer                ::  primitive(:,:,:,:)
+        integer                     ::  ivar
+        real,intent(out)            ::  EQN_update_R(1:ni,1:nj,1:nk,1:nvar)
+        real                        ::  tmp(-ng+1:ng+ni,-ng+1:ng+nj,-ng+1:ng+nk,vr_:vp_)
+        real                        ::  DivB(1:ni,1:nj,1:nk)
+        
+        ! If_rk
+        if (if_rk) then
+            primitive=>Block1%primitive_rk_IV
+        else
+            primitive=>Block1%primitive_IV
+        end if
+        
+        ! Perparations
+        ! Get m; Set R=0.; Set p1; Set Boundary.
+        EQN_update_R=0.
+
+        call ModBoundary_Dynamo_HD_primitives(Block1,if_rk)
+
+        Block1%p1_III=Block1%gamma1_III*Block1%p0_over_rho0_III*primitive(:,:,:,rho1_)+&
+            Block1%gamma3_minus_1_III*Block1%rho0T0_III*primitive(:,:,:,s1_)
+        !call ModBoundary_Dynamo_HD_p1(Block1)
+        
+        ! EQN rho1_
+        do ivar=vr_,vp_
+            tmp(:,:,:,ivar)=Block1%rho0_III*primitive(:,:,:,ivar)
+        end do
+        EQN_update_R(:,:,:,rho1_)=-1.0/(Block1%Xi_rsst_III(1:ni,1:nj,1:nk)**2*ModelS_delta)*&
+            ModSpherical_div(ni,nj,nk,ng,Block1%xi_I,Block1%xj_I,Block1%dxi,Block1%dxj,Block1%dxk,tmp)
+        
+        ! EQN vr_:vp_ Inertial Force
+        EQN_update_R(:,:,:,vr_:vp_)=-&
+            ModSpherical_A_dot_nabla_B(ni,nj,nk,ng,&
+            Block1%xi_I,Block1%xj_I,Block1%dxi,Block1%dxj,Block1%dxk,&
+            primitive(:,:,:,vr_:vp_),primitive(:,:,:,vr_:vp_))
+        
+        ! EQN vr_:vp_ pressure gradient & Lorentz force
+        tmp(1:ni,1:nj,1:nk,:)=&
+            -ModSpherical_Grad_f(ni,nj,nk,ng,&
+            Block1%xi_I,Block1%xj_I,Block1%dxi,Block1%dxj,Block1%dxk,Block1%p1_III)
+        tmp(1:ni,1:nj,1:nk,:)=tmp(1:ni,1:nj,1:nk,:)+                        &
+            ModSpherical_cross                                              &
+                (                                                           &
+                ni,nj,nk,0,                                                 &
+                ModSpherical_curl                                           &
+                    (                                                       &
+                    ni,nj,nk,ng,Block1%xi_I,Block1%xj_I,                    &
+                    Block1%dxi,Block1%dxj,Block1%dxk,                       &
+                    primitive(:,:,:,br_:bp_)                                &
+                    ),                                                      &
+                primitive(1:ni,1:nj,1:nk,br_:bp_)                           &
+                )
+        do ivar=vr_,vp_
+            EQN_update_R(:,:,:,ivar)=EQN_update_R(:,:,:,ivar)+&
+                tmp(1:ni,1:nj,1:nk,ivar)/&
+                Block1%rho0_III(1:ni,1:nj,1:nk)
+        end do
+        
+        ! EQN vr Gravity
+        EQN_update_R(:,:,:,vr_)=EQN_update_R(:,:,:,vr_)-&
+            Block1%g_over_rho0_III(1:ni,1:nj,1:nk)*primitive(1:ni,1:nj,1:nk,rho1_)
+
+        ! EQN s1_ advection term of s1
+        EQN_update_R(:,:,:,s1_)=-&
+            ModSpherical_A_dot_Grad_f(ni,nj,nk,ng,&
+            Block1%xi_I,Block1%xj_I,Block1%dxi,Block1%dxj,Block1%dxk,&
+            primitive(:,:,:,vr_:vp_),primitive(:,:,:,s1_))
+        
+        ! EQN s1_ heating
+        EQN_update_R(:,:,:,s1_)=EQN_update_R(:,:,:,s1_)+&
+            ModelS_heating_ratio*(Block1%total_heat_III(1:ni,1:nj,1:nk))/Block1%rho0T0_III(1:ni,1:nj,1:nk)
+
+        ! Magnetic field
+        EQN_update_R(:,:,:,br_:bp_)=&
+            ModSpherical_curl(ni,nj,nk,ng,&
+            Block1%xi_I,Block1%xj_I,Block1%dxi,Block1%dxj,Block1%dxk,&
+            ModSpherical_cross(ni,nj,nk,ng,primitive(:,:,:,vr_:vp_),primitive(:,:,:,br_:bp_)))
+
+        ! Div B correction
+        DivB=ModSpherical_div(ni,nj,nk,ng,Block1%xi_I,Block1%xj_I,&
+            Block1%dxi,Block1%dxj,Block1%dxk,primitive(:,:,:,br_:bp_))
+        
+        do ivar=vr_,vp_
+            EQN_update_R(:,:,:,br_+ivar-vr_)=EQN_update_R(:,:,:,br_+ivar-vr_)-&
+                DivB*primitive(1:ni,1:nj,1:nk,ivar)
+        end do
+    end subroutine ModEquation_Dynamo_MHD
     
     subroutine ModEquation_CORONA_V1(Block1,if_rk,EQN_update_R)
         implicit none

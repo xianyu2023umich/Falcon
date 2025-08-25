@@ -46,6 +46,7 @@ module ModParameters
     real                ::      CFL
 
     character(len=100)  ::      NameEquation="HD"
+    integer             ::      iEquation=0                 !   0: HD, 1: MHD             
     character(len=100)  ::      Initiation_type
     integer             ::      Initiation_type_index=0
 

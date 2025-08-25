@@ -7,7 +7,7 @@ module ModSavePlot
     
     use ModYinYangTree, only:   YYTree
     use ModConst,       only:   dpi
-    use ModParameters,  only:   nvar,ni,nj,nk,ng,r_range,PlotType,Plots,nPlots
+    use ModParameters,  only:   nvar,ni,nj,nk,ng,r_range,PlotType,Plots,nPlots,iEquation
     use ModVariables,   only:   vr_,vt_,vp_,br_,bt_,bp_
     use ModMath,        only:   ModMath_IfLinesInterSect
     use MPI
@@ -78,6 +78,7 @@ module ModSavePlot
         real,allocatable                    ::  save_primitive_IV(:,:,:,:)
         real                                ::  write_xyz(3)
         real                                ::  r_out(nrtp_out(1)),t_out(nrtp_out(2)),p_out(nrtp_out(3))
+        character(len=100)                  ::  line_format
 
         ! MPI set up
         call MPi_Comm_rank(MPI_COMM_WORLD,MpiRank, ierr)
@@ -147,6 +148,13 @@ module ModSavePlot
             write(logical_unit,*) 'ZONE T="STRUCTURE GRID", I=', nrtp_out(1),&
              ', J=', nrtp_out(2), ', K=', nrtp_out(3), ', F=POINT'
 
+            select case(iEquation)
+            case(0)
+                line_format='(3I5,8ES16.8)'
+            case(1)
+                line_format='(3I5,11ES16.8)'
+            end select
+            
             do ip=1,nrtp_out(3)
                 do it=1,nrtp_out(2)
                     do ir=1,nrtp_out(1)
@@ -154,7 +162,7 @@ module ModSavePlot
                         write_xyz(2)=r_out(ir)*sin(t_out(it))*sin(p_out(ip))
                         write_xyz(3)=r_out(ir)*cos(t_out(it))
 
-                        write(logical_unit,'(3I5,8ES16.8)') ir,it,ip,write_xyz,save_primitive_IV(:,ir,it,ip)
+                        write(logical_unit,line_format) ir,it,ip,write_xyz,save_primitive_IV(:,ir,it,ip)
                     end do
                 end do
             end do

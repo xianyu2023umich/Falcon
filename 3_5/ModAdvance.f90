@@ -2,11 +2,11 @@ module ModAdvance
 
     use ModBlock,           only:   BlockType
     use ModYinYangTree,     only:   YYTree
-    use ModEquation,        only:   ModEquation_Dynamo_HD
+    use ModEquation,        only:   ModEquation_Dynamo_HD,ModEquation_Dynamo_MHD
     use ModDiffusion,       only:   ModDiffusion_Aritificial_1
-    use ModTimeStep,        only:   ModTimeStep_Dynamo_HD
+    use ModTimeStep,        only:   ModTimeStep_Dynamo_HD,ModTimeStep_Dynamo_MHD
     use ModCommunication,   only:   ModCommunication_SendRecvGC,ModCommunication_SendRecvGC_new
-    use ModParameters,      only:   ni,nj,nk,nvar,MpiRank
+    use ModParameters,      only:   ni,nj,nk,nvar,MpiRank,iEquation
     use ModVariables,       only:   vr_,vt_,vp_,br_,bt_,bp_
     use ModCheck,           only:   ModCheck_primitive
     use MPI
@@ -28,11 +28,13 @@ module ModAdvance
         real                                ::  dt_local,dt_global          ! dt
         integer                             ::  ierr
 
-        if (br_>0) then
-            !call ModTimeStep_Dynamo_MHD(Tree,CFL_ad,dt_local)
-        else
+        select case(iEquation)
+        case(0)
             call ModTimeStep_Dynamo_HD(Tree,CFL_ad,dt_local)
-        end if
+        case(1)
+            call ModTimeStep_Dynamo_MHD(Tree,CFL_ad,dt_local)
+        end select
+
         call MPI_AllReduce(dt_local,dt_global,1,MPI_REAL,MPI_MIN,MPI_COMM_WORLD,ierr)
           
         ! see if all the local blocks in the tree
@@ -57,11 +59,12 @@ module ModAdvance
                     if_rk_output=(rk_index<4)
 
                     ! Get the EQN_update_R
-                    if (br_>0) then
-                        !call ModEquation_Dynamo_MHD(Block1,if_rk_input,EQN_update_R)
-                    else
+                    select case(iEquation)
+                    case(0)
                         call ModEquation_Dynamo_HD(Block1,if_rk_input,EQN_update_R)
-                    end if
+                    case(1)
+                        call ModEquation_Dynamo_MHD(Block1,if_rk_input,EQN_update_R)
+                    end select
 
 
                     ! Get the next RK
