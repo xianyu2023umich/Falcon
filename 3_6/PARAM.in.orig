@@ -1,0 +1,93 @@
+#GEOMETRY
+1               iGeomety
+
+#DOMAIN
+0.7             r_range(1)
+0.99            r_range(2)
+
+#GRID
+6              ni
+18              nj
+54              nk
+2               ng
+
+#RADIALGRID
+2
+
+#ARTIFICIALCOOLING
+0.99            rmax
+scale           type_dc
+
+5.4e-2
+
+#MODELS
+FreeEOS_v51_x0.75_z0.02.dat
+FreeEOS_v51_x0.75_z0.02_entropy_contour_9.252752.dat
+opacity_x70_y28_z2.dat
+
+
+#AMR
+6              AMR_nLevels
+T T T           rtp_if_divide
+T               if_global
+0.7             rmin
+1.0             rmax
+F T T           rtp_if_divide
+T               if_global
+0.9             rmin
+1.0             rmax
+F T T           rtp_if_divide
+F               if_global
+0.94             rmin
+1.0             rmax
+1.17            thmin
+1.98            thmax
+-0.39           phmin
+0.39            phmax
+F T T           rtp_if_divide
+F               if_global
+0.96             rmin
+1.0             rmax
+1.37            thmin
+1.77            thmax
+-0.2           phmin
+0.2            phmax
+F T T           rtp_if_divide
+F               if_global
+0.96             rmin
+1.0             rmax
+1.47            thmin
+1.67            thmax
+-0.1           phmin
+0.1            phmax
+F T T           rtp_if_divide
+F               if_global
+0.98             rmin
+1.0             rmax
+1.53            thmin
+1.61            thmax
+-0.04           phmin
+0.04            phmax
+
+#SAVEPLOT
+1               nPlots
+3D              charType
+10
+
+#TIMESTEPPING
+0.8             CFL
+
+#STOP
+10             nSteps
+
+#HEATING
+1.0           ModelS_heating_ratio
+
+#EQUATION
+hd             MHD or HD
+
+#INITIATION
+harmonics       Initiation_type
+
+#DOCHECK
+T               DoCheck
