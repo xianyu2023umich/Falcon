@@ -366,11 +366,16 @@ module ModStratification_new
         gamma3    = ModMath_1D_interpol_0D(gamma3_stratification, nPoints_stratification,0,r_Rsun_stratification,r_rsun)
         kap__CGS  = ModMath_1D_interpol_0D(Kappa_stratification, nPoints_stratification,0,r_Rsun_stratification,r_rsun)
 
-        if (present(diffusion__CGS))      diffusion__CGS      = ModMath_1D_interpol_0D(Diffusion_stratification,      nPoints_stratification,0,r_Rsun_stratification,r_rsun)
-        if (present(cooling__CGS))        cooling__CGS        = ModMath_1D_interpol_0D(Cooling_stratification,        nPoints_stratification,0,r_Rsun_stratification,r_rsun)
-        if (present(diffusion_flux__CGS)) diffusion_flux__CGS = ModMath_1D_interpol_0D(BlackBodyFlux_stratification, nPoints_stratification,0,r_Rsun_stratification,r_rsun)
-        if (present(cooling_flux__CGS))   cooling_flux__CGS   = ModMath_1D_interpol_0D(CoolingFlux_stratification,   nPoints_stratification,0,r_Rsun_stratification,r_rsun)
-        if (present(Xi_rsst))             Xi_rsst             = ModMath_1D_interpol_0D(Xi_stratification,             nPoints_stratification,0,r_Rsun_stratification,r_rsun)
+        if (present(diffusion__CGS))      diffusion__CGS      = ModMath_1D_interpol_0D(Diffusion_stratification,        &
+            nPoints_stratification,0,r_Rsun_stratification,r_rsun)
+        if (present(cooling__CGS))        cooling__CGS        = ModMath_1D_interpol_0D(Cooling_stratification,          &        
+            nPoints_stratification,0,r_Rsun_stratification,r_rsun)
+        if (present(diffusion_flux__CGS)) diffusion_flux__CGS = ModMath_1D_interpol_0D(BlackBodyFlux_stratification,    & 
+            nPoints_stratification,0,r_Rsun_stratification,r_rsun)
+        if (present(cooling_flux__CGS))   cooling_flux__CGS   = ModMath_1D_interpol_0D(CoolingFlux_stratification,      &   
+            nPoints_stratification,0,r_Rsun_stratification,r_rsun)
+        if (present(Xi_rsst))             Xi_rsst             = ModMath_1D_interpol_0D(Xi_stratification,               &             
+            nPoints_stratification,0,r_Rsun_stratification,r_rsun)
     end subroutine ModStratification_new_get_vars
 
     ! Find the r that bisects ∫|d(ln ρ₀)/dr| dr over r_range (both in CGS).
