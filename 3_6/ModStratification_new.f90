@@ -284,7 +284,7 @@ module ModStratification_new
 
         ! Gamma1 profile using interpolation of EOS table.
         Gamma1_stratification=&
-            ModMath_2D_interpol_1D(EOS_table%data_3D(:,:,16),&
+            ModMath_2D_interpol_1D(EOS_table%data_3D(:,:,15),&
             nlogQ_EOS_table,nlogT_EOS_table,0,logQ_EOS_table,logT_EOS_table,&
             nPoints_stratification,logQ_T_of_entropy_contour)
 
@@ -308,7 +308,7 @@ module ModStratification_new
         logQ_T_stratification(:,1) = log10(Rho_stratification) - 2.0d0*log10(T_stratification) + 12.0d0
         logQ_T_stratification(:,2) = log10(T_stratification)
 
-        gamma3_stratification = ModMath_2D_interpol_1D(EOS_table%data_3D(:,:,17),&
+        gamma3_stratification = ModMath_2D_interpol_1D(EOS_table%data_3D(:,:,16),&
             nlogQ_EOS_table,nlogT_EOS_table,0,logQ_EOS_table,logT_EOS_table,&
             nPoints_stratification,logQ_T_stratification)
     end subroutine ModStratification_new_calc_gamma3
