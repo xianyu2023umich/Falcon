@@ -1,5 +1,6 @@
 module ModStratification_new
 
+    use ModParameters,  only: r_range_Rsun
     use ModConst,       only: dpi,G_CGS,rad_a__CGS,speed_c__CGS,R_sun__CGS
     use ModLookUpTable, only: LookUpTables,LookUpTable,nLookUpTables
     use ModEOS,         only: EOS_table,nlogQ_EOS_table,nlogT_EOS_table,logQ_EOS_table,logT_EOS_table
@@ -24,16 +25,16 @@ module ModStratification_new
     
 
     ! The values at the base of the convection zone.
-    real(8)             ::  r_Rsun_base=0.7
+    real(8)             ::  r_Rsun_base=0.7d0
     real(8)             ::  Rho_base=10.0**(-0.6841807359334023)
     real(8)             ::  g_base=54340.03688603464
     real(8)             ::  P_base
 
     ! stratification profiles
-    real(8)             ::  dr_Rsun=0.0001
-    real(8)             ::  r_Rsun_max_profile=1.0025
-    real(8)             ::  r_Rsun_max_cooling=0.99d0
-    real(8)             ::  r_Rsun_max_simulation=0.99
+    real(8)             ::  dr_Rsun=0.0001d0
+    real(8)             ::  r_Rsun_max_profile=1.0025d0
+    real(8)             ::  r_Rsun_max_cooling
+    real(8)             ::  r_Rsun_max_simulation
     integer             ::  nPoints_stratification
     real(8),allocatable ::  r_Rsun_stratification(:)
     real(8),allocatable ::  Rho_stratification(:)
@@ -88,6 +89,10 @@ module ModStratification_new
                 exit
             end if
         end do
+
+        ! Set the max height using r_range_Rsun
+        r_Rsun_max_cooling=r_range_Rsun(2)
+        r_Rsun_max_simulation=r_range_Rsun(2)
 
         call ModStratification_new_get_pressure_density
         call ModStratification_new_allocate
@@ -310,36 +315,36 @@ module ModStratification_new
 
     subroutine ModStratification_new_artificial_cooling
         implicit none
-        real(8) :: cooling_center
-        real(8) :: cooling_width
+        real(8) :: cooling_center_Rsun
+        real(8) :: cooling_width_Rsun
         real(8) :: p_center
         real(8) :: rho_center
         real(8) :: g_center
         real(8) :: cooling_flux_0
         real(8) :: cooling_flux_r2(nPoints_stratification)
 
-        cooling_center = r_Rsun_max_cooling
-        if (cooling_center < 0.0d0) cooling_center = r_Rsun_max_simulation
+        cooling_center_Rsun = r_Rsun_max_cooling
+        if (cooling_center_Rsun < 0.0d0) cooling_center_Rsun = r_Rsun_max_simulation
 
         p_center = ModMath_1D_interpol_0D(P_stratification,&
-            nPoints_stratification,0,r_Rsun_stratification,cooling_center)
+            nPoints_stratification,0,r_Rsun_stratification,cooling_center_Rsun)
         rho_center = ModMath_1D_interpol_0D(Rho_stratification,&
-            nPoints_stratification,0,r_Rsun_stratification,cooling_center)
+            nPoints_stratification,0,r_Rsun_stratification,cooling_center_Rsun)
         g_center = ModMath_1D_interpol_0D(g_stratification,&
-            nPoints_stratification,0,r_Rsun_stratification,cooling_center)
+            nPoints_stratification,0,r_Rsun_stratification,cooling_center_Rsun)
 
         ! Use the same scale-height style width as the old stratification module.
-        cooling_width = 2.0d0 * p_center / (g_center * rho_center) / R_sun__CGS
+        cooling_width_Rsun = 2.0d0 * p_center / (g_center * rho_center) / R_sun__CGS
 
         ! Anchor the cooling profile to the surface diffusion flux.
         cooling_flux_0 = BlackBodyFlux_stratification(1)
 
         cooling_flux_r2 = cooling_flux_0 * &
-            exp(-(r_Rsun_stratification-cooling_center)**2 / cooling_width**2) * &
+            exp(-(r_Rsun_stratification-cooling_center_Rsun)**2 / cooling_width_Rsun**2) * &
             r_Rsun_stratification(1)**2 / r_Rsun_stratification**2
 
         Cooling_stratification = cooling_flux_r2 * &
-            (r_Rsun_stratification-cooling_center) / cooling_width**2 / R_sun__CGS * 2.0d0
+            (r_Rsun_stratification-cooling_center_Rsun) / cooling_width_Rsun**2 / R_sun__CGS * 2.0d0
         CoolingFlux_stratification = cooling_flux_r2
 
     end subroutine ModStratification_new_artificial_cooling
