@@ -65,5 +65,8 @@ module ModParameters
 
     ! Coronal heating parameters
     real(8)             ::      LperpSqrtB=1.5e9
+
+    character(len=100)  ::      DivB_method                 ! "GLM" or "CT"
+    integer             ::      DivB_option=0               ! 0: nothing. 1: GLM. 2: Powell's source term.
     
 end module ModParameters

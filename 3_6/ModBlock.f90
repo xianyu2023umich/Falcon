@@ -52,6 +52,7 @@ module ModBlock
                                         br_=-1,&
                                         bt_=-1,&
                                         bp_=-1,&
+                                        psi_=-1,&
                                         te_=-1,&
                                         te1_=-1,&
                                         w_plus_=-1,&
@@ -95,6 +96,7 @@ module ModBlock
         real(8),allocatable         ::  p1_III(:,:,:)
         real(8),allocatable         ::  Xi_rsst_III(:,:,:)
         real(8),allocatable         ::  v_wave_III(:,:,:)
+        real(8),allocatable         ::  h_LLL(:,:,:)            ! local min physical cell size
 
         ! 3D arrays for corona
         real(8),allocatable         ::  p_III(:,:,:)
@@ -139,7 +141,7 @@ module ModBlock
             call ModBlock_InitPrimitives(Block1,if_use_actual_nvar)
             call ModBlock_InitSSM(Block1)
         case(1) ! Dynamo MHD
-            Block1%nvar=8
+            Block1%nvar=9
             Block1%rho1_=1
             Block1%vr_=2
             Block1%vt_=3
@@ -148,6 +150,7 @@ module ModBlock
             Block1%bt_=6
             Block1%bp_=7
             Block1%s1_=8
+            Block1%psi_=9
             call ModBlock_InitPrimitives(Block1,if_use_actual_nvar)
             call ModBlock_InitSSM(Block1)
         case(2) ! Corona MHD
@@ -397,6 +400,16 @@ module ModBlock
                 do j=1,nj
                     do i=1,ni
                         Block1%Dk_LLF(i,j,k)=Block1%xi_I(i)*Block1%dxk*sin(Block1%xj_I(j))
+                    end do
+                end do
+            end do
+            allocate(Block1%h_LLL(1:ni,1:nj,1:nk))
+            do k=1,nk
+                do j=1,nj
+                    do i=1,ni
+                        Block1%h_LLL(i,j,k)=min(Block1%dxi, &
+                            Block1%xi_I(i)*Block1%dxj, &
+                            Block1%xi_I(i)*sin(Block1%xj_I(j))*Block1%dxk)
                     end do
                 end do
             end do

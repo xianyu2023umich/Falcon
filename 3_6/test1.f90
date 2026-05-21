@@ -1,7 +1,7 @@
 program test1
 
-    
-    use ModParameters,      only:   MpiSize, MpiRank, r_range, nSteps, DoCheck
+    use ModBlock,           only: BlockType
+    use ModParameters,      only:   MpiSize, MpiRank, r_range, nSteps, DoCheck,ni
     use ModReadParameters,  only:   ModReadParameters_read
     use ModYinYangTree,     only:   YYTree, YinYangTree_InitTree, YinYangTree_SetAll
     use ModCommunication,   only:   ModCommunication_SetGCAll, &
@@ -19,6 +19,8 @@ program test1
     integer                 ::  ierr
     integer                 ::  iStep
     real(8)                 ::  dt
+    integer :: iblock
+    type(BlockType),pointer :: Block1
 
     call MPI_INIT(ierr)
     call MPI_Comm_size(MPI_COMM_WORLD, MpiSize, ierr)
@@ -44,6 +46,11 @@ program test1
 
     call MPI_BARRIER(MPI_COMM_WORLD,ierr)
     if (MpiRank==0) print *,'Complete initial checks.'
+
+    do iblock=1,2
+        Block1 => Tree%LocalBlocks(iblock)
+        print *,iBlock,Block1%gamma3_minus_1_III(1:ni,1,1)
+    end do
 
     do iStep=1,nSteps
         call ModAdvance_rk4(Tree,.true.,dt)

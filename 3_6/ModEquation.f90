@@ -10,6 +10,7 @@ module ModEquation
     use ModDiffusion,   only:   ModDiffusion_Aritificial_1
     use ModBoundary,    only:   ModBoundary_Dynamo_HD_primitives,&
                                 ModBoundary_Dynamo_MHD_primitives
+    use ModDivB,        only:   ModDivB_GLM
 
     use ModParameters,  only:   ni,nj,nk,ng,nvar,ModelS_heating_ratio
     use ModConst,       only:   gamma_ideal_gas
@@ -22,33 +23,20 @@ module ModEquation
     ! Dynamo: first order fluctuations (e.g. rho1)
     ! Corona: Zeroth order variables (e.g. total rho)
 
-    subroutine ModEquation_Dynamo_HD(Blc1,if_rk,EQN_update_R)
+    subroutine ModEquation_Dynamo_HD(Blc1)
         implicit none
-        type(BlockType),target      ::  Blc1                      
-        logical,intent(in)          ::  if_rk
-        real(8),intent(out),optional ::  EQN_update_R(:,:,:,:)
-        
-        ! If_rk
-        if (if_rk) then
-            Blc1%primitive=>Blc1%primitive_rk_IV
-        else
-            Blc1%primitive=>Blc1%primitive_IV
-        end if
-        
-        ! Perparations
-        ! Set R=0.; Set p1; Set Boundary.
-        EQN_update_R=0.
-        call ModBoundary_Dynamo_HD_primitives(Blc1,if_rk)
+        type(BlockType),target      ::  Blc1
+
+        Blc1%EQN_update_R_IV=0.
+        call ModBoundary_Dynamo_HD_primitives(Blc1)
         call ModEquation_Dynamo_Get_p1(Blc1)
-        
-        ! Main equations
+
         call ModEquation_Dynamo_Mass_Conservation(Blc1)
         call ModEquation_Dynamo_Inertial_Force(Blc1)
         call ModEquation_Dynamo_Pressure_Gradient(Blc1)
         call ModEquation_Dynamo_Gravity(Blc1)
         call ModEquation_Dynamo_Entropy_Advection(Blc1)
         call ModEquation_Dynamo_Entropy_Heating(Blc1)
-        if (present(EQN_update_R)) EQN_update_R = Blc1%EQN_update_R_IV(1:ni,1:nj,1:nk,:)
     end subroutine ModEquation_Dynamo_HD
 
     ! Linearized EOS: p1 = γ1*(p0/ρ0)*ρ1 + (γ3−1)*ρ0*T0*s1
@@ -178,26 +166,13 @@ module ModEquation
             ModSpherical_cross(ni,nj,nk,ng,Blc1%primitive(:,:,:,Blc1%vr_:Blc1%vp_),Blc1%primitive(:,:,:,Blc1%br_:Blc1%bp_)))
     end subroutine ModEquation_Dynamo_Induction_Equation
 
-    subroutine ModEquation_Dynamo_MHD(Blc1,if_rk,EQN_update_R)
+    subroutine ModEquation_Dynamo_MHD(Blc1)
         implicit none
-        type(BlockType),target      ::  Blc1                      
-        logical,intent(in)          ::  if_rk
-        real(8),intent(out),optional ::  EQN_update_R(:,:,:,:)
-        integer                     ::  ivar
-        real(8)                     ::  DivB(1:ni,1:nj,1:nk)
-        
-        ! If_rk
-        if (if_rk) then
-            Blc1%primitive=>Blc1%primitive_rk_IV
-        else
-            Blc1%primitive=>Blc1%primitive_IV
-        end if
-        
-        ! Perparations
-        ! Set R=0.; Set p1; Set Boundary.
+        type(BlockType),target      ::  Blc1
+
         Blc1%EQN_update_R_IV=0.
 
-        call ModBoundary_Dynamo_MHD_primitives(Blc1,if_rk)
+        call ModBoundary_Dynamo_MHD_primitives(Blc1)
         call ModEquation_Dynamo_Get_p1(Blc1)
         
         ! Main equations
@@ -209,21 +184,7 @@ module ModEquation
         call ModEquation_Dynamo_Entropy_Advection(Blc1)
         call ModEquation_Dynamo_Entropy_Heating(Blc1)
         call ModEquation_Dynamo_Induction_Equation(Blc1)
-        
-        ! Powell div-B source term: ∂B/∂t −= (∇·B) v  (removes divergence errors)
-        DivB=ModSpherical_div(ni,nj,nk,ng,Blc1%xi_I,Blc1%xj_I,&
-            Blc1%dxi,Blc1%dxj,Blc1%dxk,Blc1%primitive(:,:,:,Blc1%br_:Blc1%bp_))
-
-        do ivar=Blc1%vr_,Blc1%vp_
-            Blc1%EQN_update_R_IV(:,:,:,Blc1%br_+ivar-Blc1%vr_)=Blc1%EQN_update_R_IV(:,:,:,Blc1%br_+ivar-Blc1%vr_)-&
-                DivB*Blc1%primitive(1:ni,1:nj,1:nk,ivar)
-        end do
-        if (present(EQN_update_R)) EQN_update_R = Blc1%EQN_update_R_IV(1:ni,1:nj,1:nk,:)
     end subroutine ModEquation_Dynamo_MHD
-
-
-
-
 
 
     subroutine ModEquation_Corona_Mass_Conservation(Blc1)
@@ -346,7 +307,7 @@ module ModEquation
 
         Blc1%EQN_update_R_IV=0.
 
-        call ModBoundary_Dynamo_MHD_primitives(Blc1,if_rk)
+        call ModBoundary_Dynamo_MHD_primitives(Blc1)
         call ModEquation_Corona_Mass_Conservation(Blc1)
         call ModEquation_Corona_Inertial_Force(Blc1)
         call ModEquation_Corona_Pressure_Gradient(Blc1)

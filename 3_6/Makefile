@@ -11,9 +11,9 @@ test1_OBJ   =   ModYinYang.o		ModDerivative.o		ModSpherical.o		 \
 				ModConst.o			ModParameters.o		ModLinReconstruct.o ModLookUpTable.o  \
 				ModEOS.o			ModOpacity.o		ModMath.o 			ModStratification_new.o\
 				ModAllocation.o	    ModControl.o		ModBlock.o \
-				ModBoundary.o		ModDiffusion.o      ModEquation.o       	\
+				ModBoundary.o		ModDiffusion.o      ModDivB.o			ModEquation.o       	\
 				ModYinYangTree.o   	ModAMR.o			ModInitiation.o		\
-			    ModReadParameters.o	ModGC.o			    ModTimeStep.o		ModSavePlot.o
+			    ModReadParameters.o	ModGC.o			    ModWaveSpeed.o		ModTimeStep.o		ModSavePlot.o
 
 test_CH_PGM =   test_coronalheating.exe
 test_CH_OBJ =   ModConst.o          ModParameters.o     ModStratification.o ModBlock.o          \

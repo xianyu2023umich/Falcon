@@ -49,16 +49,8 @@ module ModTimeStep
 
         select case(iGeometry)
         case(1)
-            ! Wave speed
-            Block1%v_wave_III(1:ni,1:nj,1:nk)=1./Block1%Xi_rsst_III(1:ni,1:nj,1:nk)*&
-                    sqrt(Block1%gamma1_III(1:ni,1:nj,1:nk)*Block1%p0_over_rho0_III(1:ni,1:nj,1:nk)) + &
-                    sqrt(   Block1%primitive_IV(1:ni,1:nj,1:nk,Block1%vr_)**2  + &
-                            Block1%primitive_IV(1:ni,1:nj,1:nk,Block1%vt_)**2  + &
-                            Block1%primitive_IV(1:ni,1:nj,1:nk,Block1%vp_)**2)
-
             dl_min=min(Block1%dxi,Block1%dxj*minval(Block1%xi_I),Block1%dxk*minval(Block1%xi_I))
             dt = CFL_ad * dl_min / maxval(Block1%v_wave_III(1:ni,1:nj,1:nk))
-            !print *,maxval(Block1%Xi_rsst_III),minval(Block1%Xi_rsst_III)
         end select
     end subroutine ModTimeStep_Dynamo_HD_single
 
@@ -94,17 +86,6 @@ module ModTimeStep
 
         select case(iGeometry)
         case(1)
-            ! Wave speed
-            Block1%v_wave_III(1:ni,1:nj,1:nk)=1./Block1%Xi_rsst_III(1:ni,1:nj,1:nk)*&
-                    sqrt(Block1%gamma1_III(1:ni,1:nj,1:nk)*Block1%p0_over_rho0_III(1:ni,1:nj,1:nk)) + &
-                    sqrt(   Block1%primitive_IV(1:ni,1:nj,1:nk,Block1%vr_)**2  + &
-                            Block1%primitive_IV(1:ni,1:nj,1:nk,Block1%vt_)**2  + &
-                            Block1%primitive_IV(1:ni,1:nj,1:nk,Block1%vp_)**2) + &
-                    sqrt(   Block1%primitive_IV(1:ni,1:nj,1:nk,Block1%br_)**2  + &
-                            Block1%primitive_IV(1:ni,1:nj,1:nk,Block1%bt_)**2  + &
-                            Block1%primitive_IV(1:ni,1:nj,1:nk,Block1%bp_)**2) / &
-                    sqrt(Block1%rho0_III(1:ni,1:nj,1:nk))
-
             dl_min=min(Block1%dxi,Block1%dxj*minval(Block1%xi_I),Block1%dxk*minval(Block1%xi_I))
             dt = CFL_ad * dl_min / maxval(Block1%v_wave_III(1:ni,1:nj,1:nk))
         end select

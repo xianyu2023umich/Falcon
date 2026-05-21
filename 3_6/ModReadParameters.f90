@@ -6,7 +6,8 @@ module ModReadParameters
                                     ModelS_rmax,ModelS_dc_type,ModelS_dc_rmax,ModelS_filename,&
                                     nSteps,CFL,ModelS_heating_ratio,NameEquation,iEquation,Initiation_type,&
                                     Initiation_type_index,rLevelInitial,iGeometry,DoCheck,&
-                                    Plots,nPlots,PlotType,nAMRs,AMRs,AMRType,mpirank
+                                    Plots,nPlots,PlotType,nAMRs,AMRs,AMRType,mpirank,&
+                                    DivB_method,DivB_option
     use ModLookUpTable,     only:   ModLookUpTable_Read
     use ModEOS,             only:   ModEOS_init
     use ModOpacity,         only:   ModOpacity_init
@@ -178,6 +179,9 @@ module ModReadParameters
                         stop 1
                     end if
 
+                case("DIVB")
+                    call ModReadParameters_read_DivB(logical_unit)
+                    
                 case default
                     write(*,*) "Error from ",name_sub,": Unknown command: ",trim(adjustl(line))
                     stop 1
@@ -187,6 +191,28 @@ module ModReadParameters
 
         close(logical_unit)
     end subroutine ModReadParameters_read
+
+    subroutine ModReadParameters_read_DivB(logical_unit)
+        implicit none
+        character(len=31)               ::  name_sub='ModReadParameters_read_DivB'
+        integer,intent(in)              ::  logical_unit
+        integer                         ::  ios                 ! For reading
+        
+        read(logical_unit, *, iostat=ios) DivB_method
+        if (ios/=0) then
+            write(*,*) "Error from ",name_sub,": Error reading DivB_method"
+            stop 1
+        end if
+
+        select case(trim(adjustl(DivB_method)))
+        case('None','none','NONE')
+            DivB_option=0
+        case('GLM','glm','GLM')
+            DivB_option=1
+        case('DivBSource','divbsource','DIVBSOURCE')
+            DivB_option=2
+        end select
+    end subroutine ModReadParameters_read_DivB
 
     subroutine ModReadParameters_read_SavePlot(logical_unit)
         implicit none
