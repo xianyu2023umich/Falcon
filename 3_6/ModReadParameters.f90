@@ -28,7 +28,7 @@ module ModReadParameters
     subroutine ModReadParameters_read(filename,logical_unit)
         implicit none
         character(len=*),intent(in)     ::  filename            ! Parameter input filename
-        character(len=256)              ::  line,var            ! Which line it is
+        character(len=256)              ::  line                ! Which line it is
         character(len=22)               ::  name_sub='ModReadParameters_read'
         integer,intent(in)              ::  logical_unit
         integer                         ::  ios                 ! For reading

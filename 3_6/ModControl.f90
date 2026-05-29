@@ -14,5 +14,6 @@ Module ModControl
     ! 0: initiation
     ! 1: running
     ! 2: hold
+    ! 3: finished
     integer         :: iStatus = 0
 end Module ModControl

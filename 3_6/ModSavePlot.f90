@@ -137,7 +137,10 @@ module ModSavePlot
         end do
 
         ! Allocate the IV at the first layer by rank 0.
-        if (MpiRank==0) allocate(save_primitive_IV(nvar,nrtp_out(1),nrtp_save(2),nrtp_save(3)))
+        if (MpiRank==0) then
+            allocate(save_primitive_IV(nvar,nrtp_out(1),nrtp_save(2),nrtp_save(3)))
+            save_primitive_IV=-1.e30
+        end if
 
         ! Mpi_reduce each layer so that each time it's not that large.
         do ir=1,nrtp_out(1)

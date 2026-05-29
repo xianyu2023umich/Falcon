@@ -27,6 +27,7 @@ program test1
     !integer                     :: iblock
     !type(BlockType),pointer     :: Block1
 
+    iStatus=0
     call MPI_INIT(ierr)
     call MPI_Comm_size(MPI_COMM_WORLD, MpiSize, ierr)
     call MPI_Comm_rank(MPI_COMM_WORLD, MpiRank, ierr)
@@ -44,6 +45,7 @@ program test1
 
     ! The main loop. Now I don't use iStep=1,nSteps
     ! since there might be checkpoints.
+    iStatus=1
 
     ! Initialize iStep to 1 and t to 0.0
     iStep=1
@@ -100,6 +102,7 @@ program test1
     end do
 
     call MPI_FINALIZE(ierr)
+    iStatus=3
 
 contains
 
