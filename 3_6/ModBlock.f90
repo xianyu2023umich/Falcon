@@ -1,8 +1,8 @@
 module ModBlock
     
-    use ModConst,      only:   M_sun__CGS,G_CGS,R_sun__CGS
-    use ModParameters,  only:   ni,nj,nk,ng,iGeometry
-    use ModStratification_new, only: ModStratification_new_get_vars
+    use ModConst,               only:   M_sun__CGS,G_CGS,R_sun__CGS
+    use ModParameters,          only:   ni,nj,nk,ng,iGeometry
+    use ModStratification_new,  only:   ModStratification_new_get_vars
 
     type GC_target
         logical                     ::  if_yin                  ! if_yin of other
@@ -73,6 +73,7 @@ module ModBlock
 
         ! About the convection zone
         logical                     ::  if_SSM
+        logical                     ::  if_involve_B = .false.  ! if magnetic field is active for this block
         real(8),allocatable         ::  g_I(:)               ! background gravity
         real(8),allocatable         ::  p0_I(:)              ! background pressure
         real(8),allocatable         ::  rho0_I(:)            ! background density
@@ -111,7 +112,8 @@ module ModBlock
 
     contains
 
-    subroutine ModBlock_Init(Block1,iBlock,xijk_range,if_yin,itype_equation,if_use_actual_nvar)
+    subroutine ModBlock_Init(Block1,iBlock,xijk_range,if_yin,itype_equation,if_use_actual_nvar,&
+        if_involve_B_here)
         implicit none
         type(BlockType),target      ::  Block1                  ! the block
         integer,intent(in)          ::  iBlock                  ! Global iBlock
@@ -119,11 +121,19 @@ module ModBlock
         logical,intent(in)          ::  if_yin                  ! if is yin or yang   
         integer,intent(in)          ::  itype_equation          ! type of equation
         logical,intent(in)          ::  if_use_actual_nvar
+        logical,intent(in)          ::  if_involve_B_here       ! if involve B for this block
 
         ! Set iBlock, if_yin,itype_equation
         Block1%iBlock=iBlock
         Block1%if_yin=if_yin
         Block1%itype_equation=itype_equation
+        
+        ! If not HD, then set if_involve_B. Other wise always false.
+        if (itype_equation==0) then
+            Block1%if_involve_B=.false.
+        else
+            Block1%if_involve_B=if_involve_B_here
+        end if
 
         ! Initialize the boundaries.
         Block1%if_bottom=.false.
@@ -482,7 +492,7 @@ module ModBlock
             deallocate(Block1%cooling_flux_I)
             deallocate(Block1%Xi_rsst_I   )
     
-            ! Allocate 3D arrays
+            ! DeAllocate 3D arrays
             deallocate(Block1%gamma1_III         )
             deallocate(Block1%gamma3_minus_1_III )
             deallocate(Block1%rho0_III           )
@@ -493,7 +503,7 @@ module ModBlock
             deallocate(Block1%p1_III             )
             deallocate(Block1%Xi_rsst_III        )
     
-            ! Allocate wave speed array
+            ! DeAllocate wave speed array
             deallocate(Block1%v_wave_III         )
         end if
     end subroutine ModBlock_deallocate

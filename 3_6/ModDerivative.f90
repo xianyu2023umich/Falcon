@@ -151,4 +151,18 @@ Module ModDerivative
         end select
     end function ModDerivative_2nd_O3
 
+    function ModDerivative_1st_O4_1D(f, n, ng, dx) result(df)
+        implicit none
+        integer, intent(in) :: n, ng
+        real(8), intent(in) :: f(-ng+1:n+ng)
+        real(8), intent(in) :: dx
+        real(8) :: df(1:n)
+
+        df = (1./12./dx) * ( &
+            -     f((3):(n+2)) &
+            + 8.* f((2):(n+1)) &
+            - 8.* f((0):(n-1)) &
+            +     f((-1):(n-2)))
+    end function ModDerivative_1st_O4_1D
+
 end Module ModDerivative

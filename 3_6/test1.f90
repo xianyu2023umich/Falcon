@@ -1,71 +1,103 @@
 program test1
 
-    use ModBlock,           only: BlockType
-    use ModParameters,      only:   MpiSize, MpiRank, r_range, nSteps, DoCheck,ni
+    use ModBlock,           only:   BlockType
+    use ModControl,         only:   t,dt,iStep,iStatus,if_param_file_opened
+    use ModParameters,      only:   MpiSize, MpiRank, r_range, nSteps, DoCheck,&
+                                    if_do_echo, nStepsEcho
     use ModReadParameters,  only:   ModReadParameters_read
-    use ModYinYangTree,     only:   YYTree, YinYangTree_InitTree, YinYangTree_SetAll
+    use ModYinYangTree,     only:   YYTree,&
+                                    YinYangTree_InitTree,&
+                                    YinYangTree_SetAll,&
+                                    YinYangTree_UpdateAll
     use ModCommunication,   only:   ModCommunication_SetGCAll, &
                                     ModCommunication_SendRecvGC_new
     use ModSavePlot,        only:   ModSave_DoAll
     use ModCheck,           only:   ModCheck_primitive
     use ModAdvance,         only:   ModAdvance_rk4
     use ModAMR,             only:   ModAMR_set_grid
-    use ModInitiation,      only:   ModInitiation_rand_velocity
+    use ModInitiation,      only:   ModInitiation_DoAll
     use MPI
 
     implicit none
 
-    type(YYTree),target     ::  Tree
-    integer                 ::  ierr
-    integer                 ::  iStep
-    real(8)                 ::  dt
-    integer :: iblock
-    type(BlockType),pointer :: Block1
+    type(YYTree),target         ::  Tree
+    integer                     ::  ierr
+    character(len=*), parameter ::  param_file = 'PARAM.in'
+    integer                     ::  Logical_unit_param_file = 42
+    !integer                     :: iblock
+    !type(BlockType),pointer     :: Block1
 
     call MPI_INIT(ierr)
     call MPI_Comm_size(MPI_COMM_WORLD, MpiSize, ierr)
     call MPI_Comm_rank(MPI_COMM_WORLD, MpiRank, ierr)
 
-    call ModReadParameters_read('PARAM.in.orig',1)
+    ! First time to read parameters. This will read all parameters 
+    ! until the checkpoint section. If there is no checkpoint section, 
+    ! it will read all parameters.
+    call ModReadParameters_read(param_file, Logical_unit_param_file)
     if (MpiRank==0) print *, 'read parameters'
 
     call test1_INITIATION(Tree)
     if (MpiRank==0) print *, 'initialized tree and state'
-
-    if (DoCheck) call ModCheck_primitive(Tree,.false.)
     if (DoCheck) call ModCheck_primitive(Tree,.true.)
 
-    call ModCommunication_SendRecvGC_new(Tree,.false.)
-    call ModCommunication_SendRecvGC_new(Tree,.false.)
-    
-    call MPI_BARRIER(MPI_COMM_WORLD,ierr)
-    if (MpiRank==0) print *,'Complete initial communication.'
-    
-    if (DoCheck) call ModCheck_primitive(Tree,.false.)
-    if (DoCheck) call ModCheck_primitive(Tree,.true.)
 
-    call MPI_BARRIER(MPI_COMM_WORLD,ierr)
-    if (MpiRank==0) print *,'Complete initial checks.'
+    ! The main loop. Now I don't use iStep=1,nSteps
+    ! since there might be checkpoints.
 
-    do iblock=1,2
-        Block1 => Tree%LocalBlocks(iblock)
-        print *,iBlock,Block1%gamma3_minus_1_III(1:ni,1,1)
-    end do
+    ! Initialize iStep to 1 and t to 0.0
+    iStep=1
+    t=0.0
 
-    do iStep=1,nSteps
+    ! The main loop.
+    do
+        ! Advance
         call ModAdvance_rk4(Tree,.true.,dt)
-        if (MpiRank==0) print *, 'Complete Advancing at iStep=',iStep,'dt=',dt
 
+        ! Check
         if (DoCheck) call ModCheck_primitive(Tree,.false.)
+
+        ! Echo
+        if (if_do_echo .and. mod(iStep,nStepsEcho) == 0 .and. MpiRank == 0) then
+            print *, 'Complete Advancing at iStep=',iStep,'dt=',dt
+        end if
+
+        ! Save
         call ModSave_DoAll(Tree,iStep)
+
+        ! See if we have reached the total nSteps.
+        ! If yes then read param again. 
+
+        if (iStep >= nSteps) then
+            ! Print checkpoint info.
+            if (MpiRank==0) then
+                print *,'Advancing stops at iStep=',iStep
+                print *,'Attempting to read parameters for the next run...'
+            end if
+
+            ! If it is still opened. If yes then read it.
+            ! If no then there should be no change to nStep,
+            ! so the run will naturally stop.
+            if (if_param_file_opened) then
+                call ModReadParameters_read(param_file, Logical_unit_param_file)
+                call YinYangTree_UpdateAll(Tree,1)
+            end if
+            
+            ! If we have read parameters successfully, then it means we have more steps to do. 
+            ! If not, it means we have reached the end of the parameter file and we can stop.
+            if (iStep >= nSteps) then
+                if (MpiRank==0) print *, 'No more steps to do. Stopping.'
+                exit
+            else
+                if (MpiRank==0) print *, 'Successfully read parameters for the next run. Continuing.'
+            end if
+        end if
         call MPI_BARRIER(MPI_COMM_WORLD,ierr)
+
+        ! Update iStep and t. 
+        iStep = iStep + 1
+        t = t + dt
     end do
-
-    !call ModCommunication_SendRecvGC_new(Tree,.false.)
-    if (MpiRank==0) print *, 'refreshed ghost cells before final save'
-
-    call ModSave_DoAll(Tree,nSteps)
-    if (MpiRank==0) print *, 'saved final cube'
 
     call MPI_FINALIZE(ierr)
 
@@ -90,8 +122,14 @@ contains
             print *,'Tree%NumLeafNodes=',Tree%NumLeafNodes,'MpiRank=',MpiRank,' has ',Tree%nLocalBlocks,' blocks'
         end if
 
-        call ModInitiation_rand_velocity(Tree, 1000.0d0)
-        if (MpiRank==0) print *, '  ModInitiation_rand_velocity (v_rms=100)'
+        call ModInitiation_DoAll(Tree)
+        if (MpiRank==0) print *, '  ModInitiation_DoAll'
+
+        call ModCommunication_SendRecvGC_new(Tree,.false.)
+        call ModCommunication_SendRecvGC_new(Tree,.false.)
+    
+        call MPI_BARRIER(MPI_COMM_WORLD,ierr)
+        if (MpiRank==0) print *,'Complete initial communication.'
     end subroutine test1_INITIATION
 
 end program test1

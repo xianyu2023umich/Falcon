@@ -6,7 +6,7 @@ module ModYinYangTree
     ! 2. Define GC_interface here. It shouldn't be in ModCommunication.f90
     !    because it's related to the tree.
 
-    use ModParameters,      only:   ni,ng,iEquation
+    use ModParameters,      only:   ni,ng,iEquation,if_involve_B
     use ModBlock,           only:   BlockType,&
                                     ModBlock_Init
     use ModConst,           only:   dpi
@@ -335,12 +335,36 @@ module ModYinYangTree
                 rtp_ranges(:,:,iLocalBlock),&
                 if_yin=if_yin,&
                 itype_equation=iEquation,&
-                if_use_actual_nvar=.true.)
+                if_use_actual_nvar=.true.,&
+                if_involve_B_here=if_involve_B)
 
             ! Set if_top or bottom
             call YinYangTree_if_top_bottom(Tree%LocalBlocks(iLocalBlock),Tree%r_range_CGS)
         end do    
     end subroutine YinYangTree_SetAll
+
+    ! Update the states of the tree.
+    ! Option 1: update if_involve B for all blocks in MHD.
+
+    subroutine YinYangTree_UpdateAll(Tree,ioption)
+        implicit none
+        type(YYTree),intent(inout)  ::  Tree                ! the tree
+        integer,intent(in)          ::  ioption             ! option for update
+        integer                     ::  iLocalBlock         ! local block index
+
+        select case (ioption)
+        case (1)
+            if (iEquation==0) then
+                do iLocalBlock=1,Tree%nLocalBlocks
+                    Tree%LocalBlocks(iLocalBlock)%if_involve_B=.false.
+                end do
+            else
+                do iLocalBlock=1,Tree%nLocalBlocks
+                    Tree%LocalBlocks(iLocalBlock)%if_involve_B=if_involve_B
+                end do
+            end if
+        end select
+    end subroutine YinYangTree_UpdateAll
 
     ! Get the blocks info ( the xijk_ranges, specifically)
     ! from the Tree

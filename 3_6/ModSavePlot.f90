@@ -555,7 +555,7 @@ module ModSavePlot
                     '"Rho1", "Vx", "Vy", "Vz", "S1"'
             case(1)
                 write(logical_unit,'(A)') 'VARIABLES = "X [Rs]", "Y [Rs]", "Z [Rs]", '//&
-                    '"Rho1", "Vx", "Vy", "Vz", "Bx", "By", "Bz", "S1"'
+                    '"Rho1", "Vx", "Vy", "Vz", "Bx", "By", "Bz", "S1", "PHI"'
             case(2)
                 write(logical_unit,'(A)') 'VARIABLES = "X [Rs]", "Y [Rs]", "Z [Rs]", '//&
                     '"Rho", "Vx", "Vy", "Vz", "Bx", "By", "Bz", "Te", "W_plus", "W_minus"'
@@ -599,15 +599,15 @@ module ModSavePlot
                         sph = sin(phi);    cph = cos(phi)
 
                         ! Position: rtp → Cartesian xyz in units of Rs
-                        ! Yin: standard;  Yang: (x,y,z) = (-x0,-z0,-y0)
+                        ! Yin: standard;  Yang: (x,y,z) = (-x0,z0,y0)
                         if (Block1%if_yin) then
                             xyz(1) = r*sth*cph
                             xyz(2) = r*sth*sph
                             xyz(3) = r*cth
                         else
                             xyz(1) = -r*sth*cph
-                            xyz(2) = -r*cth
-                            xyz(3) = -r*sth*sph
+                            xyz(2) = r*cth
+                            xyz(3) = r*sth*sph
                         end if
                         xyz = xyz / R_sun__CGS
 
@@ -620,7 +620,7 @@ module ModSavePlot
                         if (Block1%if_yin) then
                             vars_out(Block1%vr_) = vx0;  vars_out(Block1%vt_) = vy0;  vars_out(Block1%vp_) = vz0
                         else
-                            vars_out(Block1%vr_) = -vx0;  vars_out(Block1%vt_) = -vz0;  vars_out(Block1%vp_) = -vy0
+                            vars_out(Block1%vr_) = -vx0;  vars_out(Block1%vt_) = vz0;  vars_out(Block1%vp_) = vy0
                         end if
 
                         ! B field: (br,bt,bp) → (bx,by,bz), only if present
@@ -631,7 +631,7 @@ module ModSavePlot
                             if (Block1%if_yin) then
                                 vars_out(Block1%br_) = vx0;  vars_out(Block1%bt_) = vy0;  vars_out(Block1%bp_) = vz0
                             else
-                                vars_out(Block1%br_) = -vx0;  vars_out(Block1%bt_) = -vz0;  vars_out(Block1%bp_) = -vy0
+                                vars_out(Block1%br_) = -vx0;  vars_out(Block1%bt_) = vz0;  vars_out(Block1%bp_) = vy0
                             end if
                         end if
 

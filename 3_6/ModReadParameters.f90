@@ -1,13 +1,23 @@
 module ModReadParameters
 
     use ModConst,           only:   R_sun__CGS
-    use ModParameters,      only:   r_range,r_range_Rsun,ni,nj,nk,ng,nvar,&
-                                    ModelS_delta,ModelS_c_sound__CGS,&
-                                    ModelS_rmax,ModelS_dc_type,ModelS_dc_rmax,ModelS_filename,&
-                                    nSteps,CFL,ModelS_heating_ratio,NameEquation,iEquation,Initiation_type,&
-                                    Initiation_type_index,rLevelInitial,iGeometry,DoCheck,&
-                                    Plots,nPlots,PlotType,nAMRs,AMRs,AMRType,mpirank,&
-                                    DivB_method,DivB_option
+    use ModParameters,      only:   mpirank,&
+                                    r_range,r_range_Rsun,&
+                                    ni,nj,nk,ng,nvar,&
+                                    Artificial_heating_ratio,&
+                                    nSteps,&
+                                    CFL,&
+                                    NameEquation,iEquation,&
+                                    Initiation_type,Initiation_type_index,randVelocity_rms,&
+                                    InitiationB_type,InitiationB_type_index,Bphi_uniform,&
+                                    iGeometry,&
+                                    DoCheck,&
+                                    Plots,nPlots,PlotType,&
+                                    rLevelInitial,&
+                                    nAMRs,AMRs,AMRType,&
+                                    if_do_echo,nStepsEcho,&
+                                    if_involve_B,DivB_method,DivB_option
+    use ModControl,         only:   if_param_file_opened
     use ModLookUpTable,     only:   ModLookUpTable_Read
     use ModEOS,             only:   ModEOS_init
     use ModOpacity,         only:   ModOpacity_init
@@ -22,17 +32,24 @@ module ModReadParameters
         character(len=22)               ::  name_sub='ModReadParameters_read'
         integer,intent(in)              ::  logical_unit
         integer                         ::  ios                 ! For reading
+        logical                         ::  if_close
 
-        ! Open the input file
-        open(logical_unit, file=filename, status='old', action='read', iostat=ios)
-        if (ios /= 0) then
-            write(*,*) "Error from ",name_sub,": Error opening file: ", filename
-            stop
+        ! Default if_close to true.
+        if_close=.true.
+
+        ! Open the input file if not opened yet.
+        if (.not. if_param_file_opened) then
+            open(logical_unit, file=filename, status='old', action='read', iostat=ios)
+            if (ios /= 0) then
+                write(*,*) "Error from ",name_sub,": Error opening file: ", filename
+                stop
+            end if
+            if_param_file_opened = .true.
         end if
 
         ! The main loop to read the file.
         do  
-            read(logical_unit, '(A)', iostat=ios) line
+            read(logical_unit, *, iostat=ios) line
             if (ios /= 0) exit  ! End of file
             
             if (line(1:1) == "#") then              ! If starts with # then enter this command block
@@ -83,44 +100,6 @@ module ModReadParameters
                         write(*,*) "Error from ",name_sub,": Error reading rLevelInitial"
                         stop 1
                     end if
-                    
-                ! About artificial cooling
-                ! Read ModelS_rmax. Then read the type of dc
-                ! If user, then read an extra line
-                case("#ARTIFICIALCOOLING")
-                    read(logical_unit, *, iostat=ios) ModelS_rmax
-                    if (ios/=0) then
-                        write(*,*) "Error from ",name_sub,": Error reading ModelS_rmax"
-                        stop 1
-                    end if
-
-                    read(logical_unit, *, iostat=ios) ModelS_dc_type
-                    if (ios/=0) then
-                        write(*,*) "Error from ",name_sub,": Error reading ModelS_rmax"
-                        stop 1
-                    end if
-
-                    ! After reading ModelS_dc_type,
-                    ! if it's read then read one more time
-                    ! If it's scale then calculate ModelS_dc_rmax later.
-                    ! Otherwise just stop.
-                    select case(ModelS_dc_type)
-                    case("read","Read","READ")
-                        read(logical_unit, *, iostat=ios) ModelS_dc_rmax
-                        if (ios/=0) then
-                            write(*,*) "Error from ",name_sub,": Error reading RandomScale"
-                            stop 1
-                        end if
-                    case("scale")
-                    case default
-                        write(*,*) "Error from ",name_sub,": Unknown ModelS_dc_type=",trim(adjustl(var))
-                        STOP
-                    end select
-                
-                ! Read three parameters about ModelS:
-                ! 1. ModelS_delta 2. ModelS_c_sound__CGS 3. ModelS_filename
-                case("#MODELS")
-                    call ModReadParameters_read_Models(logical_unit)
                 
                 ! AMR grid
                 case("#AMR")
@@ -146,11 +125,16 @@ module ModReadParameters
                     end if
 
                 case("#HEATING")
-                    read(logical_unit, *, iostat=ios) ModelS_heating_ratio
+                    read(logical_unit, *, iostat=ios) Artificial_heating_ratio
                     if (ios/=0) then
-                        write(*,*) "Error from ",name_sub,": Error reading ModelS_heating_ratio"
+                        write(*,*) "Error from ",name_sub,": Error reading Artificial_heating_ratio"
                         stop 1
                     end if
+
+                ! Read three parameters about ModelS:
+                ! 1. ModelS_delta 2. ModelS_c_sound__CGS 3. ModelS_filename
+                case("#MODELS")
+                    call ModReadParameters_read_Models(logical_unit)
 
                 case("#EQUATION")
                     call ModReadParameters_read_Equation(logical_unit)
@@ -162,6 +146,30 @@ module ModReadParameters
                         Initiation_type_index=0
                     case("Harmonics","harmonics")
                         Initiation_type_index=1
+                    case("RandomV","randomv","randomvelocity","RandomVelocity")
+                        Initiation_type_index=3
+                        read(logical_unit, *, iostat=ios) randVelocity_rms
+                        if (ios/=0) then
+                            write(*,*) "Error from ",name_sub,": Error reading randVelocity_rms"
+                            stop 1
+                        end if
+                    end select
+
+                case("#INITIATIONB")
+                    read(logical_unit, *, iostat=ios) InitiationB_type
+                    select case(InitiationB_type)
+                    case("none","None","NONE")
+                        InitiationB_type_index=0
+                    case("Bp","bp","BP")
+                        InitiationB_type_index=1
+                        read(logical_unit, *, iostat=ios) Bphi_uniform
+                        if (ios/=0) then
+                            write(*,*) "Error from ",name_sub,": Error reading Bphi_uniform"
+                            stop 1
+                        end if
+                    case default
+                        write(*,*) "Error from ",name_sub,": Unknown InitiationB_type: ",trim(adjustl(InitiationB_type))
+                        stop 1
                     end select
 
                 ! Read the geometry type
@@ -179,9 +187,27 @@ module ModReadParameters
                         stop 1
                     end if
 
-                case("DIVB")
-                    call ModReadParameters_read_DivB(logical_unit)
+                case("#ECHO")
+                    read(logical_unit, *, iostat=ios) if_do_echo
+                    if (ios/=0) then
+                        write(*,*) "Error from ",name_sub,": Error reading if_do_echo"
+                        stop 1
+                    end if
+
+                    read(logical_unit, *, iostat=ios) nStepsEcho
+                    if (ios/=0) then
+                        write(*,*) "Error from ",name_sub,": Error reading nStepsEcho"
+                        stop 1
+                    end if
+                
+                case("#UPDATEB")
+                    call ModReadParameters_read_UpdateB(logical_unit)
                     
+
+                case ("#CHECKPOINT")
+                    if_close = .false.
+                    exit
+
                 case default
                     write(*,*) "Error from ",name_sub,": Unknown command: ",trim(adjustl(line))
                     stop 1
@@ -189,30 +215,49 @@ module ModReadParameters
             end if
         end do
 
-        close(logical_unit)
+        ! Several things to check at the end:
+        ! 1. If iequation=0, e.g., hd, but if_involve_B is true, then turn it off
+        if (iEquation==0 .and. if_involve_B) then
+            write(*,*) "Warning from ",name_sub,": if_involve_B is true but iEquation=0 (HD). Turn off if_involve_B."
+            if_involve_B=.false.
+        end if
+
+        ! If there's no checkpoint then it means no more to read.
+        if(if_close) then
+            close(logical_unit)
+            if_param_file_opened = .False.
+        end if
     end subroutine ModReadParameters_read
 
-    subroutine ModReadParameters_read_DivB(logical_unit)
+    subroutine ModReadParameters_read_UpdateB(logical_unit)
         implicit none
         character(len=31)               ::  name_sub='ModReadParameters_read_DivB'
         integer,intent(in)              ::  logical_unit
         integer                         ::  ios                 ! For reading
-        
-        read(logical_unit, *, iostat=ios) DivB_method
+
+        read(logical_unit, *, iostat=ios) if_involve_B
         if (ios/=0) then
-            write(*,*) "Error from ",name_sub,": Error reading DivB_method"
+            write(*,*) "Error from ",name_sub,": Error reading if_involve_B"
             stop 1
         end if
 
-        select case(trim(adjustl(DivB_method)))
-        case('None','none','NONE')
-            DivB_option=0
-        case('GLM','glm','GLM')
-            DivB_option=1
-        case('DivBSource','divbsource','DIVBSOURCE')
-            DivB_option=2
-        end select
-    end subroutine ModReadParameters_read_DivB
+        if (if_involve_B) then
+            read(logical_unit, *, iostat=ios) DivB_method
+            if (ios/=0) then
+                write(*,*) "Error from ",name_sub,": Error reading DivB_method"
+                stop 1
+            end if
+
+            select case(trim(adjustl(DivB_method)))
+            case('None','none','NONE')
+                DivB_option=0
+            case('GLM','glm')
+                DivB_option=1
+            case('DivBSource','divbsource','DIVBSOURCE')
+                DivB_option=2
+            end select
+        end if
+    end subroutine ModReadParameters_read_UpdateB
 
     subroutine ModReadParameters_read_SavePlot(logical_unit)
         implicit none
@@ -448,8 +493,10 @@ module ModReadParameters
         select case(NameEquation)
         case("MHD","mhd")
             iEquation=1
+            nvar=9
         case("HD","hd")
             iEquation=0
+            nvar=5
         end select
     end subroutine ModReadParameters_read_Equation
 

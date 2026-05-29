@@ -13,7 +13,8 @@ test1_OBJ   =   ModYinYang.o		ModDerivative.o		ModSpherical.o		 \
 				ModAllocation.o	    ModControl.o		ModBlock.o \
 				ModBoundary.o		ModDiffusion.o      ModDivB.o			ModEquation.o       	\
 				ModYinYangTree.o   	ModAMR.o			ModInitiation.o		\
-			    ModReadParameters.o	ModGC.o			    ModWaveSpeed.o		ModTimeStep.o		ModSavePlot.o
+			    ModReadParameters.o	ModGC.o			    ModWaveSpeed.o		ModTimeStep.o		\
+				ModSavePlot.o
 
 test_CH_PGM =   test_coronalheating.exe
 test_CH_OBJ =   ModConst.o          ModParameters.o     ModStratification.o ModBlock.o          \
@@ -129,6 +130,11 @@ ModSavePlot.o: ModSavePlot.f90
 
 %.o: %.f90
 	$(GFORTRAN)	-c 	$< 	-o 	$@
+
+test_corona_1D_PGM = test_corona_1D.exe
+
+test_corona_1D: ModDerivative.o test_corona_1D.f90
+	$(GFORTRAN) -o $(test_corona_1D_PGM) ModDerivative.o test_corona_1D.f90
 
 test_divB_cleaning: test_divB_cleaning.f90
 	$(GFORTRAN) -o test_divB_cleaning.exe test_divB_cleaning.f90

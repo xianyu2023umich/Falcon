@@ -30,14 +30,7 @@ module ModParameters
     integer             ::      ng                          !   Ghost cell grid
     integer             ::      nvar=5                      !   number of variables
 
-    real(8)             ::      ModelS_delta=1.0e-6         !   Used for scales
-    real(8)             ::      ModelS_c_sound__CGS=1.8e5   !   constant c speed in rsst
-
-    character(len=100)  ::      ModelS_dc_type              !   Type of artificial cooling
-    real(8)             ::      ModelS_rmax                 !   Top of cooling
-    real(8)             ::      ModelS_dc_rmax=-1.0
-    character(len=100)  ::      ModelS_filename
-    real(8)             ::      ModelS_heating_ratio=1.0
+    real(8)             ::      Artificial_heating_ratio=1.0
 
     integer             ::      nPlots=0
     type(PlotType),&
@@ -48,9 +41,15 @@ module ModParameters
     real(8)             ::      CFL
 
     character(len=100)  ::      NameEquation="HD"
-    integer             ::      iEquation=0                 !   0: HD, 1: MHD, 2: Corona         
+    integer             ::      iEquation=0                 !   0: HD, 1: MHD, 2: Corona    
+
     character(len=100)  ::      Initiation_type
     integer             ::      Initiation_type_index=0
+    real(8)             ::      randVelocity_rms=1.0d3
+
+    character(len=100)  ::      InitiationB_type
+    integer             ::      InitiationB_type_index=0
+    real(8)             ::      Bphi_uniform=1.0d2
 
     integer             ::      rLevelInitial
 
@@ -66,7 +65,12 @@ module ModParameters
     ! Coronal heating parameters
     real(8)             ::      LperpSqrtB=1.5e9
 
+    logical             ::      if_involve_B
     character(len=100)  ::      DivB_method                 ! "GLM" or "CT"
     integer             ::      DivB_option=0               ! 0: nothing. 1: GLM. 2: Powell's source term.
+    
+    logical             ::      if_do_echo=.false.
+    integer             ::      nStepsEcho=10
+
     
 end module ModParameters

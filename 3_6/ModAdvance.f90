@@ -2,12 +2,15 @@ module ModAdvance
 
     use ModBlock,           only:   BlockType
     use ModYinYangTree,     only:   YYTree
-    use ModEquation,        only:   ModEquation_Dynamo_HD,ModEquation_Dynamo_MHD
+    use ModEquation,        only:   ModEquation_Dynamo
     use ModDiffusion,       only:   ModDiffusion_Aritificial_1
-    use ModTimeStep,        only:   ModTimeStep_Dynamo_HD,ModTimeStep_Dynamo_MHD
+    use ModTimeStep,        only:   ModTimeStep_Dynamo
+    use ModWaveSpeed,       only:   ModWaveSpeed_Dynamo
     use ModCommunication,   only:   ModCommunication_SendRecvGC,ModCommunication_SendRecvGC_new
-    use ModParameters,      only:   ni,nj,nk,nvar,MpiRank,iEquation,CFL
+    use ModParameters,      only:   ni,nj,nk,nvar,MpiRank,iEquation,CFL,DivB_option
     use ModCheck,           only:   ModCheck_primitive
+    use ModBoundary,        only:   ModBoundary_Dynamo_primitives
+    use ModDivB,            only:   ModDivB_GLM
     use MPI
 
     contains
@@ -21,16 +24,25 @@ module ModAdvance
         integer                             ::  iLocalBlock                 ! i of block
         integer                             ::  rk_index                    ! runge-kutta index
         logical                             ::  if_rk_input,if_rk_output    ! If use rk for R i/o
-        real(8),allocatable                 ::  EQN_update_R(:,:,:,:)       ! the following four used for rk
-
         real(8)                             ::  dt_local,dt_global          ! dt
         integer                             ::  ierr
 
+        ! Compute wave speed for all local blocks before timestep and equation
+        do iLocalBlock=1,size(Tree%LocalBlocks)
+            Block1=>Tree%LocalBlocks(iLocalBlock)
+            select case(iEquation)
+            case(0)
+                call ModWaveSpeed_Dynamo(Block1)
+            case(1)
+                call ModWaveSpeed_Dynamo(Block1)
+            end select
+        end do
+
         select case(iEquation)
         case(0)
-            call ModTimeStep_Dynamo_HD(Tree,CFL,dt_local)
+            call ModTimeStep_Dynamo(Tree,CFL,dt_local)
         case(1)
-            call ModTimeStep_Dynamo_MHD(Tree,CFL,dt_local)
+            call ModTimeStep_Dynamo(Tree,CFL,dt_local)
         end select
 
         call MPI_AllReduce(dt_local,dt_global,1,MPI_DOUBLE,MPI_MIN,MPI_COMM_WORLD,ierr)
@@ -42,35 +54,42 @@ module ModAdvance
 
         if (if_all_same_sizes) then
 
-            ! allocate the Runge-kutta R1 to R4 according to the Block1 size.
-            Block1 => Tree%LocalBlocks(1)
-            allocate(EQN_update_R(1:ni,1:nj,1:nk,1:nvar))
-
             ! loop from runge-kutta index of 1 to 4
             ! loop all the blocks
             do rk_index=1,4
                 do iLocalBlock=1,size(Tree%LocalBlocks)
                     Block1=>Tree%LocalBlocks(iLocalBlock)
                     
-                    ! Decide if rk or ot for the input and output primitives
+                    ! Determine which is used as input or output.
                     if_rk_input=(rk_index>1)
                     if_rk_output=(rk_index<4)
 
-                    ! Get the EQN_update_R
+                    ! Set primitive pointer for this RK stage
+                    if (if_rk_input) then
+                        Block1%primitive=>Block1%primitive_rk_IV
+                    else
+                        Block1%primitive=>Block1%primitive_IV
+                    end if
+
                     select case(iEquation)
                     case(0)
-                        call ModEquation_Dynamo_HD(Block1,if_rk_input,EQN_update_R)
+                        call ModBoundary_Dynamo_primitives(Block1)
+                        call ModEquation_Dynamo(Block1)
                     case(1)
-                        call ModEquation_Dynamo_MHD(Block1,if_rk_input,EQN_update_R)
+                        call ModBoundary_Dynamo_primitives(Block1)
+                        call ModEquation_Dynamo(Block1)
+
+                        if (Block1%if_involve_B .and. DivB_option==1) then
+                            call ModDivB_GLM(Block1)
+                        end if
                     end select
 
-                    ! Get the next RK
                     if (if_rk_output) then
                         Block1%primitive_rk_IV(1:ni,1:nj,1:nk,:)=&
-                            Block1%primitive_IV(1:ni,1:nj,1:nk,:)+dt_global*EQN_update_R/(5.0-rk_index)
+                            Block1%primitive_IV(1:ni,1:nj,1:nk,:)+dt_global*Block1%EQN_update_R_IV/(5.0-rk_index)
                     else
                         Block1%primitive_IV(1:ni,1:nj,1:nk,:)=&
-                            Block1%primitive_IV(1:ni,1:nj,1:nk,:)+dt_global*EQN_update_R/(5.0-rk_index)
+                            Block1%primitive_IV(1:ni,1:nj,1:nk,:)+dt_global*Block1%EQN_update_R_IV/(5.0-rk_index)
                     end if
                 end do
 
@@ -82,11 +101,10 @@ module ModAdvance
             do iLocalBlock=1,size(Tree%LocalBlocks)
                Block1=>Tree%LocalBlocks(iLocalBlock)
 
-               ! Initialize E and get it
-               EQN_update_R=0.0
-               call ModDiffusion_Aritificial_1(Block1,EQN_update_R,2,.false.)
+               Block1%EQN_update_R_IV=0.0
+               call ModDiffusion_Aritificial_1(Block1,Block1%EQN_update_R_IV,2,.false.)
                Block1%primitive_IV(1:ni,1:nj,1:nk,:)=&
-                   Block1%primitive_IV(1:ni,1:nj,1:nk,:)+0.5*dt_global*EQN_update_R
+                   Block1%primitive_IV(1:ni,1:nj,1:nk,:)+0.5*dt_global*Block1%EQN_update_R_IV
             end do
             call ModCommunication_SendRecvGC_new(Tree,.false.)
         else
