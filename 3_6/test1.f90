@@ -122,7 +122,8 @@ contains
         ! Check if contains more blocks than nMaxBlocksPerRank. If yes, stop.
         if (Tree%nLocalBlocks > nMaxBlocksPerRank) then
             if (MpiRank==0) then
-                print *, 'Error: Tree%nLocalBlocks=',Tree%nLocalBlocks,' is larger than nMaxBlocksPerRank=',nMaxBlocksPerRank,'. Please increase nMaxBlocksPerRank or decrease the number of blocks in the tree.'
+                print *, 'Error: Tree%nLocalBlocks=',Tree%nLocalBlocks,&
+                    ' is larger than nMaxBlocksPerRank=',nMaxBlocksPerRank
             end if
             call MPI_BARRIER(MPI_COMM_WORLD,ierr)
             call MPI_FINALIZE(ierr)
