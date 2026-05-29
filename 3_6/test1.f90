@@ -1,7 +1,8 @@
 program test1
 
     use ModBlock,           only:   BlockType
-    use ModControl,         only:   t,dt,iStep,iStatus,if_param_file_opened
+    use ModControl,         only:   t,dt,iStep,iStatus,if_param_file_opened,&
+                                    nMaxBlocksPerRank
     use ModParameters,      only:   MpiSize, MpiRank, r_range, nSteps, DoCheck,&
                                     if_do_echo, nStepsEcho
     use ModReadParameters,  only:   ModReadParameters_read
@@ -117,6 +118,16 @@ contains
 
         call YinYangTree_SetAll(Tree)
         if (MpiRank==0) print *, '  YinYangTree_SetAll'
+
+        ! Check if contains more blocks than nMaxBlocksPerRank. If yes, stop.
+        if (Tree%nLocalBlocks > nMaxBlocksPerRank) then
+            if (MpiRank==0) then
+                print *, 'Error: Tree%nLocalBlocks=',Tree%nLocalBlocks,' is larger than nMaxBlocksPerRank=',nMaxBlocksPerRank,'. Please increase nMaxBlocksPerRank or decrease the number of blocks in the tree.'
+            end if
+            call MPI_BARRIER(MPI_COMM_WORLD,ierr)
+            call MPI_FINALIZE(ierr)
+            stop
+        end if
 
         call ModCommunication_SetGCAll(Tree)
         if (MpiRank==0) print *, '  ModCommunication_SetGCAll'
