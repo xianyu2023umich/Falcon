@@ -41,13 +41,10 @@ T               if_global
 #SAVEPLOT
 1               nPlots
 3D              charType
-40000
+40
 
 #TIMESTEPPING
 0.8             CFL
-
-#STOP
-10              nSteps
 
 #HEATING
 1.0             ModelS_heating_ratio
@@ -56,7 +53,35 @@ T               if_global
 hd              MHD or HD
 
 #INITIATION
-harmonics       Initiation_type
+harmonics         Initiation_type
+1.0d3           randVelocity_rms
+
+#INITIATIONB
+BP              InitiationB_type
+1.0d2           Bphi_uniform
 
 #DOCHECK
 T               DoCheck
+
+#UPDATEB
+F               if_involve_B
+
+#ECHO
+T               if_do_echo
+10              nStepsEcho
+
+#STOP
+50              nSteps
+
+CHECKPOINT  ########################
+
+UPDATEB
+T               if_involve_B
+GLM             DivB_method
+
+ECHO
+T               if_do_echo
+10              nStepsEcho
+
+STOP
+100
