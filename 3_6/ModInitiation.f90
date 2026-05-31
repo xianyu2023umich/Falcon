@@ -25,14 +25,12 @@ module ModInitiation
         case default
         end select
 
-        ! Only initialize B if if_involve_B is true.
+        ! Initialize B no matter what.
 
-        if (if_involve_B) then
-            select case (InitiationB_type_index)
+        select case (InitiationB_type_index)
         case (1)
             call ModInitiation_B_uniform_Bph(Tree, Bphi_uniform)
         end select
-        end if
     end subroutine
 
     subroutine ModInitiation_harmonic(Tree)
