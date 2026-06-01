@@ -12,14 +12,16 @@ module ModDiffusion
         integer,intent(in)              ::  h
 
         integer                         ::  direction1
-        real(8)                         ::  c_s(-ng+1:ni+ng,-ng+1:nj+ng,-ng+1:nk+ng),&
-                                            c(-ng+1:ni+ng,-ng+1:nj+ng,-ng+1:nk+ng)
+        real(8)                         ::  c(-ng+1:ni+ng,-ng+1:nj+ng,-ng+1:nk+ng)
         real(8)                         ::  d_primitive(-ng+2:ni+ng-1,-ng+2:nj+ng-1,-ng+2:nk+ng-1,nvar)
-        real(8),allocatable             ::  flux(:,:,:,:),phi(:,:,:,:)
+        real(8),allocatable             ::  flux(:,:,:,:),&
+                                            phi(:,:,:,:),&
+                                            u_r_minus_u_l(:,:,:,:),&
+                                            u_i_plus_1_minus_u_i(:,:,:,:)
         integer                         ::  i,j,ivar
 
         ! Get the sound speed
-        c_s=1./Block1%Xi_rsst_III*sqrt(Block1%gamma1_III*Block1%p0_over_rho0_III)
+        c=Block1%v_wave_III
 
         ! Get the primitive pointer
         Block1%primitive=>Block1%primitive_IV
@@ -27,7 +29,7 @@ module ModDiffusion
         do direction1=1,3
 
             ! get total speed c
-            c=abs(Block1%primitive(:,:,:,direction1+1))+c_s
+            c=abs(Block1%primitive(:,:,:,direction1+1))+Block1%v_sound_III
 
             ! use minmod to find \Delta u
             call ModLinReconstruct_minmod(nvar,ni,nj,nk,ng,direction1,Block1%primitive,d_primitive)
@@ -36,20 +38,23 @@ module ModDiffusion
             select case(direction1)
             case(1)
                 allocate(flux(ni+1,nj,nk,nvar),phi(ni+1,nj,nk,nvar))
+                allocate(u_r_minus_u_l(ni+1,nj,nk,nvar),u_i_plus_1_minus_u_i(ni+1,nj,nk,nvar))
 
                 ! first get \Phi_{h}
                 ! phi = max[0, 1+((u_r-u_l)/(u_i+1-u_i)-1)],
                 ! for the i+1/2 face.
-                phi(1:ni+1,:,:,:)=&
-                    max(0.0,1.0+h*((Block1%primitive(1:ni+1,1:nj,1:nk,:)-d_primitive(1:ni+1,1:nj,1:nk,:)*0.5-&
-                    Block1%primitive(0:ni,1:nj,1:nk,:)-d_primitive(0:ni,1:nj,1:nk,:)*0.5)/&
-                    (Block1%primitive(1:ni+1,1:nj,1:nk,:)-Block1%primitive(0:ni,1:nj,1:nk,:))-1))
+
+                u_i_plus_1_minus_u_i=Block1%primitive(1:ni+1,1:nj,1:nk,:)-&
+                    Block1%primitive(0:ni,1:nj,1:nk,:)
+                
+                u_r_minus_u_l=u_i_plus_1_minus_u_i-0.5*&
+                    (d_primitive(1:ni+1,1:nj,1:nk,:)+d_primitive(0:ni,1:nj,1:nk,:))
+
+                phi=max(0.0,1.0+h*(u_r_minus_u_l/u_i_plus_1_minus_u_i-1))
                 
                 ! then get the flux.
                 ! f_{i+1/2}=-0.5 * c_{i+1/2}*phi*(u_r-u_l)
-                flux(1:ni+1,:,:,:)=&
-                    -0.5*phi*(Block1%primitive(1:ni+1,1:nj,1:nk,:)-d_primitive(1:ni+1,1:nj,1:nk,:)*0.5-&
-                    Block1%primitive(0:ni,1:nj,1:nk,:)-d_primitive(0:ni,1:nj,1:nk,:)*0.5)
+                flux=-0.5*phi*u_r_minus_u_l
                 
                 ! multiply flux by c_{i+1/2}
                 do ivar=1,nvar
@@ -69,21 +74,24 @@ module ModDiffusion
                 end do
             case(2)
                 allocate(flux(ni,nj+1,nk,nvar),phi(ni,nj+1,nk,nvar))
+                allocate(u_r_minus_u_l(ni,nj+1,nk,nvar),u_i_plus_1_minus_u_i(ni,nj+1,nk,nvar))
 
                 ! first get \Phi_{h}
                 ! phi = max[0, 1+((u_r-u_l)/(u_i+1-u_i)-1)],
                 ! for the i+1/2 face.
-                phi(:,1:nj+1,:,:)=&
-                    max(0.0,1.0+h*((Block1%primitive(1:ni,1:nj+1,1:nk,:)-d_primitive(1:ni,1:nj+1,1:nk,:)*0.5-&
-                    Block1%primitive(1:ni,0:nj,1:nk,:)-d_primitive(1:ni,0:nj,1:nk,:)*0.5)/&
-                    (Block1%primitive(1:ni,1:nj+1,1:nk,:)-Block1%primitive(1:ni,0:nj,1:nk,:))-1))
+
+                u_i_plus_1_minus_u_i=Block1%primitive(1:ni,1:nj+1,1:nk,:)-&
+                    Block1%primitive(1:ni,0:nj,1:nk,:)
+                
+                u_r_minus_u_l=u_i_plus_1_minus_u_i-0.5*&
+                    (d_primitive(1:ni,1:nj+1,1:nk,:)+d_primitive(1:ni,0:nj,1:nk,:))
+
+                phi=max(0.0,1.0+h*(u_r_minus_u_l/u_i_plus_1_minus_u_i-1))
                 
                 ! then get the flux.
                 ! f_{i+1/2}=-0.5 * c_{i+1/2}*phi*(u_r-u_l)
-                flux(:,1:nj+1,:,:)=&
-                    -0.5*phi*(Block1%primitive(1:ni,1:nj+1,1:nk,:)-d_primitive(1:ni,1:nj+1,1:nk,:)*0.5-&
-                    Block1%primitive(1:ni,0:nj,1:nk,:)-d_primitive(1:ni,0:nj,1:nk,:)*0.5)
-                
+                flux=-0.5*phi*u_r_minus_u_l
+
                 ! multiply flux by c_{i+1/2}
                 do ivar=1,nvar
                     flux(:,:,:,ivar)=flux(:,:,:,ivar)*(c(:,1:nj+1,:)+c(:,0:nj,:))*0.5
@@ -103,20 +111,23 @@ module ModDiffusion
                 end do
             case(3)
                 allocate(flux(ni,nj,nk+1,nvar),phi(ni,nj,nk+1,nvar))
+                allocate(u_r_minus_u_l(ni,nj,nk+1,nvar),u_i_plus_1_minus_u_i(ni,nj,nk+1,nvar))
 
                 ! first get \Phi_{h}
                 ! phi = max[0, 1+((u_r-u_l)/(u_i+1-u_i)-1)],
                 ! for the i+1/2 face.
-                phi(:,:,1:nk+1,:)=&
-                    max(0.0,1.0+h*((Block1%primitive(1:ni,1:nj,1:nk+1,:)-d_primitive(1:ni,1:nj,1:nk+1,:)*0.5-&
-                    Block1%primitive(1:ni,1:nj,0:nk,:)-d_primitive(1:ni,1:nj,0:nk,:)*0.5)/&
-                    (Block1%primitive(1:ni,1:nj,1:nk+1,:)-Block1%primitive(1:ni,1:nj,0:nk,:))-1))
+
+                u_i_plus_1_minus_u_i=Block1%primitive(1:ni,1:nj,1:nk+1,:)-&
+                    Block1%primitive(1:ni,1:nj,0:nk,:)
+                
+                u_r_minus_u_l=u_i_plus_1_minus_u_i-0.5*&
+                    (d_primitive(1:ni,1:nj,1:nk+1,:)+d_primitive(1:ni,1:nj,0:nk,:))
+
+                phi=max(0.0,1.0+h*(u_r_minus_u_l/u_i_plus_1_minus_u_i-1))
                 
                 ! then get the flux.
                 ! f_{i+1/2}=-0.5 * c_{i+1/2}*phi*(u_r-u_l)
-                flux(:,:,1:nk+1,:)=&
-                    -0.5*phi*(Block1%primitive(1:ni,1:nj,1:nk+1,:)-d_primitive(1:ni,1:nj,1:nk+1,:)*0.5-&
-                    Block1%primitive(1:ni,1:nj,0:nk,:)-d_primitive(1:ni,1:nj,0:nk,:)*0.5)
+                flux=-0.5*phi*u_r_minus_u_l
                 
                 ! multiply flux by c_{i+1/2}
                 do ivar=1,nvar
@@ -138,7 +149,7 @@ module ModDiffusion
                     end do
                 end do
             end select
-            deallocate(flux,phi)
+            deallocate(flux,phi,u_r_minus_u_l,u_i_plus_1_minus_u_i)
         end do
     end subroutine ModDiffusion_Artificial_1
 

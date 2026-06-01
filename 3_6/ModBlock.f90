@@ -96,6 +96,8 @@ module ModBlock
         real(8),allocatable         ::  total_heat_III(:,:,:)
         real(8),allocatable         ::  p1_III(:,:,:)
         real(8),allocatable         ::  Xi_rsst_III(:,:,:)
+        real(8),allocatable         ::  v_sound_III(:,:,:)        ! sound speed
+        real(8),allocatable         ::  v_alfven_III(:,:,:)       ! Alfven speed
         real(8),allocatable         ::  v_wave_III(:,:,:)
         real(8),allocatable         ::  h_LLL(:,:,:)            ! local min physical cell size
 
@@ -227,6 +229,12 @@ module ModBlock
 
         ! Allocate wave speed array
         allocate(Block1%v_wave_III          (-ng+1:ni+ng,-ng+1:nj+ng,-ng+1:nk+ng))
+        allocate(Block1%v_sound_III         (-ng+1:ni+ng,-ng+1:nj+ng,-ng+1:nk+ng))
+
+        ! Only allocate Alfven speed array if br_>0
+        if (Block1%br_>0) then
+             allocate(Block1%v_alfven_III   (-ng+1:ni+ng,-ng+1:nj+ng,-ng+1:nk+ng))
+        end if
 
         ! Get the 1D profiles
         do i=-ng+1,ni+ng
@@ -262,6 +270,10 @@ module ModBlock
                 Block1%Xi_rsst_III(:,j,k)       =Block1%Xi_rsst_I
            end do
         end do
+
+        ! Directly derive the v_sound_III here.
+        Block1%v_sound_III = 1./Block1%Xi_rsst_III * &
+            sqrt(Block1%gamma1_III * Block1%p0_over_rho0_III)
     end subroutine ModBlock_InitSSM
     
     subroutine ModBlock_InitPrimitives(Block1,if_use_actual_nvar)
