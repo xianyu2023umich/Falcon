@@ -20,6 +20,7 @@ module ModDiffusion
 
         ! Get the sound speed
         c_s=1./Block1%Xi_rsst_III*sqrt(Block1%gamma1_III*Block1%p0_over_rho0_III)
+        c=Block1%v_wave_III
 
         ! Get the primitive pointer
         Block1%primitive=>Block1%primitive_IV
@@ -27,7 +28,7 @@ module ModDiffusion
         do direction1=1,3
 
             ! get total speed c
-            c=abs(Block1%primitive(:,:,:,direction1+1))+c_s
+            !c=abs(Block1%primitive(:,:,:,direction1+1))+c_s
 
             ! use minmod to find \Delta u
             call ModLinReconstruct_minmod(nvar,ni,nj,nk,ng,direction1,Block1%primitive,d_primitive)
