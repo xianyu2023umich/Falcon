@@ -149,7 +149,7 @@ module ModDiffusion
                     end do
                 end do
             end select
-            deallocate(flux,phi)
+            deallocate(flux,phi,u_r_minus_u_l,u_i_plus_1_minus_u_i)
         end do
     end subroutine ModDiffusion_Artificial_1
 
