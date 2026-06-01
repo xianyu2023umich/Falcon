@@ -1,4 +1,5 @@
 module ModLinReconstruct
+    use ModParameters, only: ni, nj, nk, ng, nvar
     implicit none
 
 contains
@@ -9,9 +10,9 @@ contains
         real(8) :: mm
 
         if (a > 0.0d0 .and. b > 0.0d0 .and. c > 0.0d0) then
-            mm = min(abs(a), abs(b), abs(c))
+            mm = min(a,b,c)
         else if (a < 0.0d0 .and. b < 0.0d0 .and. c < 0.0d0) then
-            mm = -min(abs(a), abs(b), abs(c))
+            mm = max(a,b,c)
         else
             mm = 0.0d0
         endif
@@ -20,7 +21,8 @@ contains
 
     pure function minmod_slope_x(u,i,j,k,ivar) result(du)
         implicit none
-        real(8), intent(in) :: u(:,:,:,:)
+
+        real(8), intent(in) :: u(1-ng:ni+ng, 1-ng:nj+ng, 1-ng:nk+ng, 1:nvar)
         integer, intent(in) :: i,j,k,ivar
         real(8) :: du
         real(8) :: a,b,c
@@ -35,7 +37,8 @@ contains
 
     pure function minmod_slope_y(u,i,j,k,ivar) result(du)
         implicit none
-        real(8), intent(in) :: u(:,:,:,:)
+
+        real(8), intent(in) :: u(1-ng:ni+ng, 1-ng:nj+ng, 1-ng:nk+ng, 1:nvar)
         integer, intent(in) :: i,j,k,ivar
         real(8) :: du
         real(8) :: a,b,c
@@ -50,7 +53,8 @@ contains
 
     pure function minmod_slope_z(u,i,j,k,ivar) result(du)
         implicit none
-        real(8), intent(in) :: u(:,:,:,:)
+
+        real(8), intent(in) :: u(1-ng:ni+ng, 1-ng:nj+ng, 1-ng:nk+ng, 1:nvar)
         integer, intent(in) :: i,j,k,ivar
         real(8) :: du
         real(8) :: a,b,c
