@@ -12,13 +12,14 @@ module ModDiffusion
         integer,intent(in)              ::  h
 
         integer                         ::  direction1
-        real(8)                         ::  c(-ng+1:ni+ng,-ng+1:nj+ng,-ng+1:nk+ng)
+        real(8)                         ::  c_s(-ng+1:ni+ng,-ng+1:nj+ng,-ng+1:nk+ng),&
+                                            c(-ng+1:ni+ng,-ng+1:nj+ng,-ng+1:nk+ng)
         real(8)                         ::  d_primitive(-ng+2:ni+ng-1,-ng+2:nj+ng-1,-ng+2:nk+ng-1,nvar)
         real(8),allocatable             ::  flux(:,:,:,:),phi(:,:,:,:)
         integer                         ::  i,j,ivar
 
         ! Get the sound speed
-        c=Block1%v_wave_III
+        c_s=1./Block1%Xi_rsst_III*sqrt(Block1%gamma1_III*Block1%p0_over_rho0_III)
 
         ! Get the primitive pointer
         Block1%primitive=>Block1%primitive_IV
@@ -26,7 +27,7 @@ module ModDiffusion
         do direction1=1,3
 
             ! get total speed c
-            !c=abs(Block1%primitive(:,:,:,direction1+1))+c_s
+            c=abs(Block1%primitive(:,:,:,direction1+1))+c_s
 
             ! use minmod to find \Delta u
             call ModLinReconstruct_minmod(nvar,ni,nj,nk,ng,direction1,Block1%primitive,d_primitive)
