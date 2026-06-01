@@ -158,10 +158,10 @@ module ModBlock
             Block1%vr_=2
             Block1%vt_=3
             Block1%vp_=4
-            Block1%s1_=8
-            Block1%br_=5
-            Block1%bt_=6
-            Block1%bp_=7
+            Block1%s1_=5
+            Block1%br_=6
+            Block1%bt_=7
+            Block1%bp_=8
             Block1%psi_=9
             call ModBlock_InitPrimitives(Block1,if_use_actual_nvar)
             call ModBlock_InitSSM(Block1)

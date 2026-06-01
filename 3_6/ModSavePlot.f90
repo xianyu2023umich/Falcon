@@ -558,7 +558,7 @@ module ModSavePlot
                     '"Rho1", "Vx", "Vy", "Vz", "S1"'
             case(1)
                 write(logical_unit,'(A)') 'VARIABLES = "X [Rs]", "Y [Rs]", "Z [Rs]", '//&
-                    '"Rho1", "Vx", "Vy", "Vz", "Bx", "By", "Bz", "S1", "PHI"'
+                    '"Rho1", "Vx", "Vy", "Vz", "S1", "Bx", "By", "Bz", "PHI"'
             case(2)
                 write(logical_unit,'(A)') 'VARIABLES = "X [Rs]", "Y [Rs]", "Z [Rs]", '//&
                     '"Rho", "Vx", "Vy", "Vz", "Bx", "By", "Bz", "Te", "W_plus", "W_minus"'
