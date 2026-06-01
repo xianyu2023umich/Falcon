@@ -1,7 +1,7 @@
 module ModDiffusion
 
     use ModBlock,           only:   BlockType
-    use ModParameters,      only:   ni,nj,nk,ng,nvar
+    use ModParameters,      only:   ni,nj,nk,ng,nvar,iEquation
     use ModLinReconstruct,  only:   ModLinReconstruct_minmod
 
     contains
@@ -11,34 +11,40 @@ module ModDiffusion
         type(BlockType),target          ::  Block1
         integer,intent(in)              ::  h
 
-        integer                         ::  direction1
+        integer                         ::  direction1,nvar_here
         real(8)                         ::  c(-ng+1:ni+ng,-ng+1:nj+ng,-ng+1:nk+ng)
-        real(8)                         ::  d_primitive(-ng+2:ni+ng-1,-ng+2:nj+ng-1,-ng+2:nk+ng-1,nvar)
+        real(8),allocatable             ::  d_primitive(:,:,:,:)
         real(8),allocatable             ::  flux(:,:,:,:),&
                                             phi(:,:,:,:),&
                                             u_r_minus_u_l(:,:,:,:),&
                                             u_i_plus_1_minus_u_i(:,:,:,:)
         integer                         ::  i,j,ivar
 
-        ! Get the sound speed
-        c=Block1%v_wave_III
+        ! Get the n of var here
+        if (iEquation == 1 .and. .not. Block1%if_involve_B) then
+            nvar_here = nvar - 4
+        else
+            nvar_here = nvar
+        end if
+
+        allocate(d_primitive(-ng+2:ni+ng-1,-ng+2:nj+ng-1,-ng+2:nk+ng-1,nvar_here))
 
         ! Get the primitive pointer
         Block1%primitive=>Block1%primitive_IV
 
         do direction1=1,3
 
-            ! get total speed c
+            ! c=c_s+|v_i|
             c=abs(Block1%primitive(:,:,:,direction1+1))+Block1%v_sound_III
 
             ! use minmod to find \Delta u
-            call ModLinReconstruct_minmod(nvar,ni,nj,nk,ng,direction1,Block1%primitive,d_primitive)
+            call ModLinReconstruct_minmod(nvar_here,ni,nj,nk,ng,direction1,Block1%primitive,d_primitive)
 
             ! get phi & flux
             select case(direction1)
             case(1)
-                allocate(flux(ni+1,nj,nk,nvar),phi(ni+1,nj,nk,nvar))
-                allocate(u_r_minus_u_l(ni+1,nj,nk,nvar),u_i_plus_1_minus_u_i(ni+1,nj,nk,nvar))
+                allocate(flux(ni+1,nj,nk,nvar_here),phi(ni+1,nj,nk,nvar_here))
+                allocate(u_r_minus_u_l(ni+1,nj,nk,nvar_here),u_i_plus_1_minus_u_i(ni+1,nj,nk,nvar_here))
 
                 ! first get \Phi_{h}
                 ! phi = max[0, 1+((u_r-u_l)/(u_i+1-u_i)-1)],
@@ -57,7 +63,7 @@ module ModDiffusion
                 flux=-0.5*phi*u_r_minus_u_l
                 
                 ! multiply flux by c_{i+1/2}
-                do ivar=1,nvar
+                do ivar=1,nvar_here
                     flux(:,:,:,ivar)=flux(:,:,:,ivar)*(c(1:ni+1,:,:)+c(0:ni,:,:))*0.5
                 end do
 
@@ -68,13 +74,13 @@ module ModDiffusion
                 !end do
 
                 ! update EQN_update_R
-                do ivar=1,nvar
+                do ivar=1,nvar_here
                     Block1%EQN_update_R_IV(:,:,:,ivar)=Block1%EQN_update_R_IV(:,:,:,ivar)+&
                         (flux(1:ni,:,:,ivar)-flux(2:ni+1,:,:,ivar))/Block1%dxi
                 end do
             case(2)
-                allocate(flux(ni,nj+1,nk,nvar),phi(ni,nj+1,nk,nvar))
-                allocate(u_r_minus_u_l(ni,nj+1,nk,nvar),u_i_plus_1_minus_u_i(ni,nj+1,nk,nvar))
+                allocate(flux(ni,nj+1,nk,nvar_here),phi(ni,nj+1,nk,nvar_here))
+                allocate(u_r_minus_u_l(ni,nj+1,nk,nvar_here),u_i_plus_1_minus_u_i(ni,nj+1,nk,nvar_here))
 
                 ! first get \Phi_{h}
                 ! phi = max[0, 1+((u_r-u_l)/(u_i+1-u_i)-1)],
@@ -93,7 +99,7 @@ module ModDiffusion
                 flux=-0.5*phi*u_r_minus_u_l
 
                 ! multiply flux by c_{i+1/2}
-                do ivar=1,nvar
+                do ivar=1,nvar_here
                     flux(:,:,:,ivar)=flux(:,:,:,ivar)*(c(:,1:nj+1,:)+c(:,0:nj,:))*0.5
                 end do
 
@@ -103,15 +109,15 @@ module ModDiffusion
                 !        0.5*flux(:,:,:,rho1_)
                 !end do
 
-                do ivar=1,nvar
+                do ivar=1,nvar_here
                     do i=1,ni
                         Block1%EQN_update_R_IV(i,:,:,ivar)=Block1%EQN_update_R_IV(i,:,:,ivar)+&
                             (flux(i,1:nj,:,ivar)-flux(i,2:nj+1,:,ivar))/(Block1%dxj*Block1%xi_I(i))
                     end do
                 end do
             case(3)
-                allocate(flux(ni,nj,nk+1,nvar),phi(ni,nj,nk+1,nvar))
-                allocate(u_r_minus_u_l(ni,nj,nk+1,nvar),u_i_plus_1_minus_u_i(ni,nj,nk+1,nvar))
+                allocate(flux(ni,nj,nk+1,nvar_here),phi(ni,nj,nk+1,nvar_here))
+                allocate(u_r_minus_u_l(ni,nj,nk+1,nvar_here),u_i_plus_1_minus_u_i(ni,nj,nk+1,nvar_here))
 
                 ! first get \Phi_{h}
                 ! phi = max[0, 1+((u_r-u_l)/(u_i+1-u_i)-1)],
@@ -130,7 +136,7 @@ module ModDiffusion
                 flux=-0.5*phi*u_r_minus_u_l
                 
                 ! multiply flux by c_{i+1/2}
-                do ivar=1,nvar
+                do ivar=1,nvar_here
                     flux(:,:,:,ivar)=flux(:,:,:,ivar)*(c(:,:,1:nk+1)+c(:,:,0:nk))*0.5
                 end do
 
@@ -140,7 +146,7 @@ module ModDiffusion
                 !        0.5*flux(:,:,:,rho1_)
                 !end do
 
-                do ivar=1,nvar
+                do ivar=1,nvar_here
                     do j=1,nj
                         do i=1,ni
                             Block1%EQN_update_R_IV(i,j,:,ivar)=Block1%EQN_update_R_IV(i,j,:,ivar)+&
