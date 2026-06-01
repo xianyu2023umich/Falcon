@@ -307,9 +307,15 @@ module ModBlock
         Block1%GC_iBlocks_III=-1                                           
 
         ! Get the positions of the cell centers
-        do i=1-ng,ni+ng; Block1%xi_I(i)=(xijk_range(1,1)*(ni-i+0.5)+xijk_range(1,2)*(i-0.5))/ni; end do
-        do j=1-ng,nj+ng; Block1%xj_I(j)=(xijk_range(2,1)*(nj-j+0.5)+xijk_range(2,2)*(j-0.5))/nj; end do
-        do k=1-ng,nk+ng; Block1%xk_I(k)=(xijk_range(3,1)*(nk-k+0.5)+xijk_range(3,2)*(k-0.5))/nk; end do
+        do i=1-ng,ni+ng
+            Block1%xi_I(i)=(xijk_range(1,1)*(ni-i+0.5)+xijk_range(1,2)*(i-0.5))/ni
+        end do
+        do j=1-ng,nj+ng
+            Block1%xj_I(j)=(xijk_range(2,1)*(nj-j+0.5)+xijk_range(2,2)*(j-0.5))/nj
+        end do
+        do k=1-ng,nk+ng
+            Block1%xk_I(k)=(xijk_range(3,1)*(nk-k+0.5)+xijk_range(3,2)*(k-0.5))/nk
+        end do
         
         ! Get dxi, dxj, dxk
         Block1%dxi=(xijk_range(1,2)-xijk_range(1,1))/ni
@@ -317,9 +323,15 @@ module ModBlock
         Block1%dxk=(xijk_range(3,2)-xijk_range(3,1))/nk
 
         ! Get the positions of the cell faces
-        do i=1,ni+1; Block1%xi_F(i)=(xijk_range(1,1)*(ni+1-i)+xijk_range(1,2)*(i-1))/ni; end do
-        do j=1,nj+1; Block1%xj_F(j)=(xijk_range(2,1)*(nj+1-j)+xijk_range(2,2)*(j-1))/nj; end do
-        do k=1,nk+1; Block1%xk_F(k)=(xijk_range(3,1)*(nk+1-k)+xijk_range(3,2)*(k-1))/nk; end do
+        do i=1,ni+1
+            Block1%xi_F(i)=(xijk_range(1,1)*(ni+1-i)+xijk_range(1,2)*(i-1))/ni
+        end do
+        do j=1,nj+1
+            Block1%xj_F(j)=(xijk_range(2,1)*(nj+1-j)+xijk_range(2,2)*(j-1))/nj
+        end do
+        do k=1,nk+1
+            Block1%xk_F(k)=(xijk_range(3,1)*(nk+1-k)+xijk_range(3,2)*(k-1))/nk
+        end do
         
         ! Set the face areas and cell volumes based on the geometry
         allocate(   Block1%Si_FLL(1:ni+1,1:nj,1:nk),&

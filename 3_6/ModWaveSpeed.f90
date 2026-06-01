@@ -1,5 +1,6 @@
 module ModWaveSpeed
 
+    use ModConst,      only: dpi
     use ModBlock,      only: BlockType
     use ModParameters, only: ni, nj, nk
 
@@ -21,7 +22,7 @@ module ModWaveSpeed
                 sqrt(Block1%primitive_IV(1:ni,1:nj,1:nk,Block1%br_)**2 + &
                      Block1%primitive_IV(1:ni,1:nj,1:nk,Block1%bt_)**2 + &
                      Block1%primitive_IV(1:ni,1:nj,1:nk,Block1%bp_)**2) / &
-                sqrt(Block1%rho0_III(1:ni,1:nj,1:nk))
+                sqrt(Block1%rho0_III(1:ni,1:nj,1:nk)*4.d0*dpi)
         end if
 
     end subroutine ModWaveSpeed_Dynamo

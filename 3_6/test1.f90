@@ -25,8 +25,7 @@ program test1
     integer                     ::  ierr
     character(len=*), parameter ::  param_file = 'PARAM.in'
     integer                     ::  Logical_unit_param_file = 42
-    !integer                     :: iblock
-    !type(BlockType),pointer     :: Block1
+    real(8)                     ::  t1_cpu,t2_cpu
 
     iStatus=0
     call MPI_INIT(ierr)
@@ -53,9 +52,15 @@ program test1
     t=0.0
 
     ! The main loop.
-    do
+    do  
+        ! Start counting time for this step.
+        t1_cpu = MPI_Wtime()
+
         ! Advance
         call ModAdvance_rk4(Tree,.true.,dt)
+
+        ! End counting time for this step.
+        t2_cpu = MPI_Wtime()
 
         ! Check
         if (DoCheck) call ModCheck_primitive(Tree,.false.)

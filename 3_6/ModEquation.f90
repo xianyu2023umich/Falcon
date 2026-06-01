@@ -7,7 +7,6 @@ module ModEquation
                                 ModSpherical_A_dot_nabla_B,&
                                 ModSpherical_cross,&
                                 ModSpherical_curl
-    use ModDiffusion,   only:   ModDiffusion_Aritificial_1
 
     use ModDivB,        only:   ModDivB_GLM
 

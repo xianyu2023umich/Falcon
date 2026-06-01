@@ -1,152 +1,243 @@
 module ModDiffusion
 
-    use ModBlock,           only:   BlockType
-    use ModParameters,      only:   ni,nj,nk,ng,nvar
-    use ModLinReconstruct,  only:   ModLinReconstruct_minmod
+    use ModParameters,      only: iEquation
+    use ModBlock,           only: BlockType
+    use ModParameters,      only: ni,nj,nk,ng,nvar
+    use ModLinReconstruct,  only: minmod_slope_x, minmod_slope_y, minmod_slope_z
+
+    implicit none
 
     contains
 
-    subroutine ModDiffusion_Aritificial_1(Block1,EQN_update_R,h,if_rk)
+    subroutine ModDiffusion_Artificial_1(Block1,h)
         implicit none
-        type(BlockType),target          ::  Block1
-        real(8),intent(inout)           ::  EQN_update_R(1:ni,1:nj,1:nk,1:nvar)
-        integer,intent(in)              ::  h
-        logical,intent(in)              ::  if_rk
 
-        integer                         ::  direction1
-        real(8)                         ::  c_s(-ng+1:ni+ng,-ng+1:nj+ng,-ng+1:nk+ng),&
-                                            c(-ng+1:ni+ng,-ng+1:nj+ng,-ng+1:nk+ng)
-        real(8),pointer                 ::  primitive(:,:,:,:)
-        real(8)                         ::  d_primitive(-ng+2:ni+ng-1,-ng+2:nj+ng-1,-ng+2:nk+ng-1,nvar)
-        real(8),allocatable             ::  flux(:,:,:,:),phi(:,:,:,:)
-        integer                         ::  i,j,ivar
+        type(BlockType), intent(inout), target :: Block1
+        integer, intent(in) :: h
 
-        ! Get the sound speed
-        c_s=1./Block1%Xi_rsst_III*sqrt(Block1%gamma1_III*Block1%p0_over_rho0_III)
+        integer :: i,j,k,ivar,nvar_here
+        real(8) :: hh
+        real(8), allocatable :: eps_den(:)
+        real(8), allocatable :: flux_x(:,:,:,:)
+        real(8), allocatable :: flux_y(:,:,:,:)
+        real(8), allocatable :: flux_z(:,:,:,:)
 
-        ! Get the primitive pointer based on if_rk
-        if (if_rk) then
-            primitive=>Block1%primitive_rk_IV
-        else
-            primitive=>Block1%primitive_IV
-        end if
+        nvar_here = nvar
+        if (iEquation == 1 .and. .not. Block1%if_involve_B) nvar_here = nvar - 4
 
-        do direction1=1,3
+        hh = real(h,8)
 
-            ! get total speed c
-            c=abs(primitive(:,:,:,direction1+1))+c_s
+        allocate(eps_den(nvar_here))
 
-            ! use minmod to find \Delta u
-            call ModLinReconstruct_minmod(nvar,ni,nj,nk,ng,direction1,primitive,d_primitive)
+        do ivar = 1,nvar_here
+            eps_den(ivar) = 100.0d0 * epsilon(1.0d0) * &
+                max(maxval(abs(Block1%primitive(:,:,:,ivar))), tiny(1.0d0))
+        enddo
 
-            ! get phi & flux
-            select case(direction1)
-            case(1)
-                allocate(flux(ni+1,nj,nk,nvar),phi(ni+1,nj,nk,nvar))
+        ! x-direction flux: interfaces between i-1 and i, indexed 1:ni+1
+        allocate(flux_x(1:ni+1,1:nj,1:nk,1:nvar_here))
+        call get_flux_x(Block1,hh,eps_den,flux_x)
 
-                ! first get \Phi_{h}
-                ! phi = max[0, 1+((u_r-u_l)/(u_i+1-u_i)-1)],
-                ! for the i+1/2 face.
-                phi(1:ni+1,:,:,:)=&
-                    max(0.0,1.0+h*((primitive(1:ni+1,1:nj,1:nk,:)-d_primitive(1:ni+1,1:nj,1:nk,:)*0.5-&
-                    primitive(0:ni,1:nj,1:nk,:)-d_primitive(0:ni,1:nj,1:nk,:)*0.5)/&
-                    (primitive(1:ni+1,1:nj,1:nk,:)-primitive(0:ni,1:nj,1:nk,:))-1))
-                
-                ! then get the flux.
-                ! f_{i+1/2}=-0.5 * c_{i+1/2}*phi*(u_r-u_l)
-                flux(1:ni+1,:,:,:)=&
-                    -0.5*phi*(primitive(1:ni+1,1:nj,1:nk,:)-d_primitive(1:ni+1,1:nj,1:nk,:)*0.5-&
-                    primitive(0:ni,1:nj,1:nk,:)-d_primitive(0:ni,1:nj,1:nk,:)*0.5)
-                
-                ! multiply flux by c_{i+1/2}
-                do ivar=1,nvar
-                    flux(:,:,:,ivar)=flux(:,:,:,ivar)*(c(1:ni+1,:,:)+c(0:ni,:,:))*0.5
-                end do
+        do ivar = 1,nvar_here
+            do k = 1,nk
+                do j = 1,nj
+                    do i = 1,ni
+                        Block1%EQN_update_R_IV(i,j,k,ivar) = Block1%EQN_update_R_IV(i,j,k,ivar) &
+                            + (flux_x(i,j,k,ivar) - flux_x(i+1,j,k,ivar)) / Block1%dxi
+                    enddo
+                enddo
+            enddo
+        enddo
 
-                !do ivar=vr_,vp_
-                !    flux(:,:,:,ivar)=flux(:,:,:,ivar)+&
-                !        (primitive(1:ni+1,:,:,ivar)+primitive(0:ni,:,:,ivar))*&
-                !        0.5*flux(:,:,:,rho1_)
-                !end do
+        deallocate(flux_x)
 
-                ! update EQN_update_R
-                do ivar=1,nvar
-                    EQN_update_R(:,:,:,ivar)=EQN_update_R(:,:,:,ivar)+&
-                        (flux(1:ni,:,:,ivar)-flux(2:ni+1,:,:,ivar))/Block1%dxi
-                end do
-            case(2)
-                allocate(flux(ni,nj+1,nk,nvar),phi(ni,nj+1,nk,nvar))
+        ! y-direction flux: interfaces between j-1 and j, indexed 1:nj+1
+        allocate(flux_y(1:ni,1:nj+1,1:nk,1:nvar_here))
+        call get_flux_y(Block1,hh,eps_den,flux_y)
 
-                ! first get \Phi_{h}
-                ! phi = max[0, 1+((u_r-u_l)/(u_i+1-u_i)-1)],
-                ! for the i+1/2 face.
-                phi(:,1:nj+1,:,:)=&
-                    max(0.0,1.0+h*((primitive(1:ni,1:nj+1,1:nk,:)-d_primitive(1:ni,1:nj+1,1:nk,:)*0.5-&
-                    primitive(1:ni,0:nj,1:nk,:)-d_primitive(1:ni,0:nj,1:nk,:)*0.5)/&
-                    (primitive(1:ni,1:nj+1,1:nk,:)-primitive(1:ni,0:nj,1:nk,:))-1))
-                
-                ! then get the flux.
-                ! f_{i+1/2}=-0.5 * c_{i+1/2}*phi*(u_r-u_l)
-                flux(:,1:nj+1,:,:)=&
-                    -0.5*phi*(primitive(1:ni,1:nj+1,1:nk,:)-d_primitive(1:ni,1:nj+1,1:nk,:)*0.5-&
-                    primitive(1:ni,0:nj,1:nk,:)-d_primitive(1:ni,0:nj,1:nk,:)*0.5)
-                
-                ! multiply flux by c_{i+1/2}
-                do ivar=1,nvar
-                    flux(:,:,:,ivar)=flux(:,:,:,ivar)*(c(:,1:nj+1,:)+c(:,0:nj,:))*0.5
-                end do
+        do ivar = 1,nvar_here
+            do k = 1,nk
+                do j = 1,nj
+                    do i = 1,ni
+                        Block1%EQN_update_R_IV(i,j,k,ivar) = Block1%EQN_update_R_IV(i,j,k,ivar) &
+                            + (flux_y(i,j,k,ivar) - flux_y(i,j+1,k,ivar)) &
+                            / (Block1%dxj * Block1%xi_I(i))
+                    enddo
+                enddo
+            enddo
+        enddo
 
-                !do ivar=vr_,vp_
-                !    flux(:,:,:,ivar)=flux(:,:,:,ivar)+&
-                !        (primitive(:,1:nj+1,:,ivar)+primitive(:,0:nj,:,ivar))*&
-                !        0.5*flux(:,:,:,rho1_)
-                !end do
+        deallocate(flux_y)
 
-                do ivar=1,nvar
-                    do i=1,ni
-                        EQN_update_R(i,:,:,ivar)=EQN_update_R(i,:,:,ivar)+&
-                            (flux(i,1:nj,:,ivar)-flux(i,2:nj+1,:,ivar))/(Block1%dxj*Block1%xi_I(i))
-                    end do
-                end do
-            case(3)
-                allocate(flux(ni,nj,nk+1,nvar),phi(ni,nj,nk+1,nvar))
+        ! z-direction flux: interfaces between k-1 and k, indexed 1:nk+1
+        allocate(flux_z(1:ni,1:nj,1:nk+1,1:nvar_here))
+        call get_flux_z(Block1,hh,eps_den,flux_z)
 
-                ! first get \Phi_{h}
-                ! phi = max[0, 1+((u_r-u_l)/(u_i+1-u_i)-1)],
-                ! for the i+1/2 face.
-                phi(:,:,1:nk+1,:)=&
-                    max(0.0,1.0+h*((primitive(1:ni,1:nj,1:nk+1,:)-d_primitive(1:ni,1:nj,1:nk+1,:)*0.5-&
-                    primitive(1:ni,1:nj,0:nk,:)-d_primitive(1:ni,1:nj,0:nk,:)*0.5)/&
-                    (primitive(1:ni,1:nj,1:nk+1,:)-primitive(1:ni,1:nj,0:nk,:))-1))
-                
-                ! then get the flux.
-                ! f_{i+1/2}=-0.5 * c_{i+1/2}*phi*(u_r-u_l)
-                flux(:,:,1:nk+1,:)=&
-                    -0.5*phi*(primitive(1:ni,1:nj,1:nk+1,:)-d_primitive(1:ni,1:nj,1:nk+1,:)*0.5-&
-                    primitive(1:ni,1:nj,0:nk,:)-d_primitive(1:ni,1:nj,0:nk,:)*0.5)
-                
-                ! multiply flux by c_{i+1/2}
-                do ivar=1,nvar
-                    flux(:,:,:,ivar)=flux(:,:,:,ivar)*(c(:,:,1:nk+1)+c(:,:,0:nk))*0.5
-                end do
+        do ivar = 1,nvar_here
+            do k = 1,nk
+                do j = 1,nj
+                    do i = 1,ni
+                        Block1%EQN_update_R_IV(i,j,k,ivar) = Block1%EQN_update_R_IV(i,j,k,ivar) &
+                            + (flux_z(i,j,k,ivar) - flux_z(i,j,k+1,ivar)) &
+                            / (Block1%dxk * Block1%xi_I(i) * sin(Block1%xj_I(j)))
+                    enddo
+                enddo
+            enddo
+        enddo
 
-                !do ivar=vr_,vp_
-                !    flux(:,:,:,ivar)=flux(:,:,:,ivar)+&
-                !        (primitive(:,:,1:nk+1,ivar)+primitive(:,:,0:nk,ivar))*&
-                !        0.5*flux(:,:,:,rho1_)
-                !end do
+        deallocate(flux_z)
+        deallocate(eps_den)
 
-                do ivar=1,nvar
-                    do j=1,nj
-                        do i=1,ni
-                            EQN_update_R(i,j,:,ivar)=EQN_update_R(i,j,:,ivar)+&
-                                (flux(i,j,1:nk,ivar)-flux(i,j,2:nk+1,ivar))/(Block1%dxk*Block1%xi_I(i)*sin(Block1%xj_I(j)))
-                        end do
-                    end do
-                end do
-            end select
-            deallocate(flux,phi)
-        end do
-    end subroutine ModDiffusion_Aritificial_1
+    end subroutine ModDiffusion_Artificial_1
+
+
+    subroutine get_flux_x(Block1,hh,eps_den,flux_x)
+        implicit none
+
+        type(BlockType), intent(in) :: Block1
+        real(8), intent(in) :: hh
+        real(8), intent(in) :: eps_den(:)
+        real(8), intent(out) :: flux_x(1:ni+1,1:nj,1:nk,1:size(eps_den))
+
+        integer :: i,j,k,ivar
+        integer :: iL,iR
+        real(8) :: slope_l, slope_r
+        real(8) :: ul, ur
+        real(8) :: du, dface, r, phi, cface
+
+        do ivar = 1,size(eps_den)
+            do k = 1,nk
+                do j = 1,nj
+                    do i = 1,ni+1
+
+                        iL = i - 1
+                        iR = i
+
+                        slope_l = minmod_slope_x(Block1%primitive,iL,j,k,ivar)
+                        slope_r = minmod_slope_x(Block1%primitive,iR,j,k,ivar)
+
+                        ul = Block1%primitive(iL,j,k,ivar) + 0.5d0*slope_l
+                        ur = Block1%primitive(iR,j,k,ivar) - 0.5d0*slope_r
+
+                        du    = Block1%primitive(iR,j,k,ivar) - Block1%primitive(iL,j,k,ivar)
+                        dface = ur - ul
+
+                        phi = 0.0d0
+                        if (dface*du > 0.0d0 .and. abs(du) > eps_den(ivar)) then
+                            r = dface / du
+                            r = max(0.0d0, min(1.0d0, r))
+                            phi = max(0.0d0, 1.0d0 + hh*(r - 1.0d0))
+                        endif
+
+                        cface = 0.5d0*(Block1%v_wave_III(iL,j,k) + Block1%v_wave_III(iR,j,k))
+
+                        flux_x(i,j,k,ivar) = -0.5d0*cface*phi*dface
+
+                    enddo
+                enddo
+            enddo
+        enddo
+
+    end subroutine get_flux_x
+
+
+    subroutine get_flux_y(Block1,hh,eps_den,flux_y)
+        implicit none
+
+        type(BlockType), intent(in) :: Block1
+        real(8), intent(in) :: hh
+        real(8), intent(in) :: eps_den(:)
+        real(8), intent(out) :: flux_y(1:ni,1:nj+1,1:nk,1:size(eps_den))
+
+        integer :: i,j,k,ivar
+        integer :: jL,jR
+        real(8) :: slope_l, slope_r
+        real(8) :: ul, ur
+        real(8) :: du, dface, r, phi, cface
+
+        do ivar = 1,size(eps_den)
+            do k = 1,nk
+                do j = 1,nj+1
+                    do i = 1,ni
+
+                        jL = j - 1
+                        jR = j
+
+                        slope_l = minmod_slope_y(Block1%primitive,i,jL,k,ivar)
+                        slope_r = minmod_slope_y(Block1%primitive,i,jR,k,ivar)
+
+                        ul = Block1%primitive(i,jL,k,ivar) + 0.5d0*slope_l
+                        ur = Block1%primitive(i,jR,k,ivar) - 0.5d0*slope_r
+
+                        du    = Block1%primitive(i,jR,k,ivar) - Block1%primitive(i,jL,k,ivar)
+                        dface = ur - ul
+
+                        phi = 0.0d0
+                        if (dface*du > 0.0d0 .and. abs(du) > eps_den(ivar)) then
+                            r = dface / du
+                            r = max(0.0d0, min(1.0d0, r))
+                            phi = max(0.0d0, 1.0d0 + hh*(r - 1.0d0))
+                        endif
+
+                        cface = 0.5d0*(Block1%v_wave_III(i,jL,k) + Block1%v_wave_III(i,jR,k))
+
+                        flux_y(i,j,k,ivar) = -0.5d0*cface*phi*dface
+
+                    enddo
+                enddo
+            enddo
+        enddo
+
+    end subroutine get_flux_y
+
+
+    subroutine get_flux_z(Block1,hh,eps_den,flux_z)
+        implicit none
+
+        type(BlockType), intent(in) :: Block1
+        real(8), intent(in) :: hh
+        real(8), intent(in) :: eps_den(:)
+        real(8), intent(out) :: flux_z(1:ni,1:nj,1:nk+1,1:size(eps_den))
+
+        integer :: i,j,k,ivar
+        integer :: kL,kR
+        real(8) :: slope_l, slope_r
+        real(8) :: ul, ur
+        real(8) :: du, dface, r, phi, cface
+
+        do ivar = 1,size(eps_den)
+            do k = 1,nk+1
+                do j = 1,nj
+                    do i = 1,ni
+
+                        kL = k - 1
+                        kR = k
+
+                        slope_l = minmod_slope_z(Block1%primitive,i,j,kL,ivar)
+                        slope_r = minmod_slope_z(Block1%primitive,i,j,kR,ivar)
+
+                        ul = Block1%primitive(i,j,kL,ivar) + 0.5d0*slope_l
+                        ur = Block1%primitive(i,j,kR,ivar) - 0.5d0*slope_r
+
+                        du    = Block1%primitive(i,j,kR,ivar) - Block1%primitive(i,j,kL,ivar)
+                        dface = ur - ul
+
+                        phi = 0.0d0
+                        if (dface*du > 0.0d0 .and. abs(du) > eps_den(ivar)) then
+                            r = dface / du
+                            r = max(0.0d0, min(1.0d0, r))
+                            phi = max(0.0d0, 1.0d0 + hh*(r - 1.0d0))
+                        endif
+
+                        cface = 0.5d0*(Block1%v_wave_III(i,j,kL) + Block1%v_wave_III(i,j,kR))
+
+                        flux_z(i,j,k,ivar) = -0.5d0*cface*phi*dface
+
+                    enddo
+                enddo
+            enddo
+        enddo
+
+    end subroutine get_flux_z
 
 end module ModDiffusion

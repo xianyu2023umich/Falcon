@@ -3,7 +3,7 @@ module ModAdvance
     use ModBlock,           only:   BlockType
     use ModYinYangTree,     only:   YYTree
     use ModEquation,        only:   ModEquation_Dynamo
-    use ModDiffusion,       only:   ModDiffusion_Aritificial_1
+    use ModDiffusion,       only:   ModDiffusion_Artificial_1
     use ModTimeStep,        only:   ModTimeStep_Dynamo
     use ModWaveSpeed,       only:   ModWaveSpeed_Dynamo
     use ModCommunication,   only:   ModCommunication_SendRecvGC,ModCommunication_SendRecvGC_new
@@ -101,8 +101,10 @@ module ModAdvance
             do iLocalBlock=1,size(Tree%LocalBlocks)
                Block1=>Tree%LocalBlocks(iLocalBlock)
 
+               ! Preparations
                Block1%EQN_update_R_IV=0.0
-               call ModDiffusion_Aritificial_1(Block1,Block1%EQN_update_R_IV,2,.false.)
+               Block1%primitive=>Block1%primitive_IV
+               call ModDiffusion_Artificial_1(Block1,2)
                Block1%primitive_IV(1:ni,1:nj,1:nk,:)=&
                    Block1%primitive_IV(1:ni,1:nj,1:nk,:)+0.5*dt_global*Block1%EQN_update_R_IV
             end do

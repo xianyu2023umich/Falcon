@@ -7,7 +7,7 @@ module ModInitiation
     use ModParameters,  only:   r_range,ni,nj,nk,ng,&
                                 Initiation_type_index,randVelocity_rms,&
                                 InitiationB_type_index,Bphi_uniform,&
-                                if_involve_B
+                                iEquation
     use ModConst,       only:   dpi
     contains
 
@@ -15,7 +15,11 @@ module ModInitiation
         implicit none
         type(YYTree),target     ::  Tree
 
+        ! Do nothing if 0
+
         select case (Initiation_type_index)
+        case (0)
+            ! Do nothing, leave the primitive variables as they are (probably zero).
         case (1)
             call ModInitiation_harmonic(Tree)
         case (2)
@@ -25,12 +29,17 @@ module ModInitiation
         case default
         end select
 
-        ! Initialize B no matter what.
+        ! Initialize B if iequation=1 or 2
 
-        select case (InitiationB_type_index)
-        case (1)
-            call ModInitiation_B_uniform_Bph(Tree, Bphi_uniform)
-        end select
+        if (iEquation==1 .or. iEquation==2) then
+            select case (InitiationB_type_index)
+            case (0)
+                ! Do nothing, leave the magnetic field variables as they are (probably zero).
+            case (1)
+                call ModInitiation_B_uniform_Bph(Tree, Bphi_uniform)
+            end select
+        end if
+        
     end subroutine
 
     subroutine ModInitiation_harmonic(Tree)
