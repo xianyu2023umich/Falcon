@@ -265,7 +265,7 @@ module ModReadParameters
                 Logs(iLog)%logical_unit=iUnit_log_base+iLog
                 Logs(iLog)%charType='layer'
                 Logs(iLog)%iType=1
-                Logs(iLog)%nStepsSaveLog=100
+                Logs(iLog)%nStepsSaveLog=1000
                 Logs(iLog)%r_range_SaveLog=[-1.0,-1.0] ! Negative means the whole domain
                 Logs(iLog)%nr_SaveLog=100
             end do
