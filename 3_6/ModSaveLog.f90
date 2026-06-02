@@ -26,8 +26,6 @@ module ModSaveLog
         type(LogType),pointer   ::  Log1
         integer                 ::  iLog,ir
         character(len=100)      ::  filename
-        logical                 ::  if_intersect
-        integer                 ::  ierr
 
         ! The first time to call this subroutine
         ! we need to initialize.
@@ -59,8 +57,8 @@ module ModSaveLog
                         allocate(Log1%data_SaveLog(Log1%nr_SaveLog))
                         Log1%data_SaveLog = 0.0d0
                     else
-                        if (MpiRank==0) print *, 'Warning: &
-                            nr_SaveLog should be larger than 1 for layer log.'
+                        if (MpiRank==0) print *, 'Warning: ' + &
+                            'nr_SaveLog should be larger than 1 for layer log.'
                     end if
 
                     ! Open the logical unit for each log at first time.
