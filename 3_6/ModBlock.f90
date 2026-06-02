@@ -266,20 +266,20 @@ module ModBlock
         end do
 
         ! Get the diffusion_I and cooling_I by:
-        ! dP/dV = (F_up * A_up - F_down * A_down)/V
+        ! dP/dV = - (F_up * A_up - F_down * A_down)/V
         ! Here we can arbitrarily choose the whole shell
         ! between up and down, since the diffusion and &
         ! cooling are only functions of r.
         do i=1,ni
             ! Diffusion
             Block1%diffusion_I(i)=&
-                (Block1%diffusion_flux_F(i+1)*Block1%xi_F(i+1)**2   &   ! Up face
+                -(Block1%diffusion_flux_F(i+1)*Block1%xi_F(i+1)**2   &   ! Up face
                 -Block1%diffusion_flux_F(i)*Block1%xi_F(i)**2)      &   ! Down face
                 /(Block1%xi_F(i+1)**3-Block1%xi_F(i)**3)*3.0            ! Volume
-                
+
             ! Cooling
             Block1%cooling_I(i)=&
-                (Block1%cooling_flux_F(i+1)*Block1%xi_F(i+1)**2     &   ! Up face
+                -(Block1%cooling_flux_F(i+1)*Block1%xi_F(i+1)**2     &   ! Up face
                 -Block1%cooling_flux_F(i)*Block1%xi_F(i)**2)        &   ! Down face
                 /(Block1%xi_F(i+1)**3-Block1%xi_F(i)**3)*3.0            ! Volume
         end do
