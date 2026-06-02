@@ -7,13 +7,14 @@ test0_OBJ   =   ModMath.o
 test1_PGM	=	test1.exe
 test1_MPIOBJ=	ModCommunication.o 	ModCheck.o \
 				ModAdvance.o		ModSavePlot.o		ModSaveLog.o
-test1_OBJ   =   ModYinYang.o		ModDerivative.o		ModSpherical.o		 \
-				ModConst.o			ModParameters.o		ModLinReconstruct_old.o ModLookUpTable.o  \
+test1_OBJ   =   ModConst.o			ModYinYang.o		ModDerivative.o		ModSpherical.o		 \
+				ModParameters.o		ModLinReconstruct_old.o ModLookUpTable.o  \
 				ModEOS.o			ModOpacity.o		ModMath.o 			ModStratification_new.o\
 				ModAllocation.o	    ModControl.o		ModBlock.o \
 				ModBoundary.o		ModDiffusion_old.o      ModDivB.o			ModEquation.o       	\
 				ModYinYangTree.o   	ModAMR.o			ModInitiation.o		\
-			    ModLogicalUnits.o	ModReadParameters.o	ModGC.o			    ModWaveSpeed.o		ModTimeStep.o		\
+			    ModLogicalUnits.o	ModReadParameters.o	ModGC.o			    ModWaveSpeed.o				\
+				ModTimeStep.o
 
 test_CH_PGM =   test_coronalheating.exe
 test_CH_OBJ =   ModConst.o          ModParameters.o     ModStratification.o ModBlock.o          \

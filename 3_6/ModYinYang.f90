@@ -1,5 +1,13 @@
 module ModYinYang
 
+    use ModConst,       only:  dpi
+
+    ! The total solid angle of Yin + Yang.
+    ! Greater than 4pi:
+    ! 2.0 * (cos(0.25 pi) - cos(0.75 pi)) * 1.5 pi
+    ! = 2.0 * sqrt(2) * 1.5 pi = 3sqrt(2) pi
+    real(8)         ::  solid_angle_tot = 3.d0*sqrt(2.0d0)*dpi
+
     contains
 
     ! Functions to convert Yin rtp to Yang rtp

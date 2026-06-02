@@ -6,7 +6,7 @@ Module ModLogicalUnits
     !   1        — test programs (passed explicitly, not a named constant)
     !   2        — lookup tables during initiation (EOS, entropy, opacity)
     !   11–20    — plot output files  (iUnit_plot_base + iPlot, up to 10 plots)
-    !   31–40    — log  output files  (iUnit_log_base  + iLog,  up to 10 logs)
+    !   21–40    — log  output files  (iUnit_log_base  + iLog,  up to 10 logs)
     !   42       — parameter file (PARAM.in)
 
     ! Reading parameter input files (PARAM.in), opened/closed around each read.
@@ -20,6 +20,6 @@ Module ModLogicalUnits
     integer, parameter :: iUnit_plot_base    = 10
 
     ! Base unit for log  output files.  Log  #i opens unit (iUnit_log_base  + i).
-    integer, parameter :: iUnit_log_base     = 30
+    integer, parameter :: iUnit_log_base     = 20
 
 end Module ModLogicalUnits

@@ -3,7 +3,8 @@ module ModSaveLog
     use ModControl,     only:   iStep,t,dt
     use ModBlock,       only:   BlockType
     use ModYinYang,     only:   ModYinYang_CoordConv_0D,&
-                                ModYinYang_VecConv_0D
+                                ModYinYang_VecConv_0D,&
+                                solid_angle_tot
     use ModYinYangTree, only:   YYTree
     use ModConst,       only:   dpi,R_sun__CGS
     use ModParameters,  only:   nvar,ni,nj,nk,ng,r_range,r_range_Rsun,&
@@ -139,7 +140,7 @@ module ModSaveLog
         type(LogType),pointer   ::  Log1
         real(8)                 ::  r,weight
         integer                 ::  ir_pos_int,ir,j,k
-        real(8)                 ::  T0,p0,rho0,e1,p1,enthapy,dS
+        real(8)                 ::  T0,p0,rho0,e1,p1,enthapy,s1,vrms,dS
         real(8)                 ::  kinetic_energy,radiative_flux,cooling_flux
         real(8)                 ::  primitive_I(nvar)
 
@@ -287,7 +288,7 @@ module ModSaveLog
 
                     ! weight is the fraction part
                     weight=(r-Block1%xi_F(1))/Block1%dxi+1-ir_pos_int
-                    
+
                     ! Ls is similar to Lr.
                     ! The cooling flux
                     cooling_flux = Block1%cooling_flux_F(ir_pos_int)*(1.0d0-weight)+&
@@ -300,6 +301,73 @@ module ModSaveLog
                     ! Add this piece to data.
                     log1%data_SaveLog(ir) = log1%data_SaveLog(ir) &
                         + cooling_flux * dS
+
+                case('s1')
+                    ! This is the average s1 at this r.
+                    ! get position index of this r in xi_I
+                    ir_pos_int=int((r-Block1%xi_I(1))/Block1%dxi)+1
+
+                    ! weight is the fraction part
+                    weight=(r-Block1%xi_I(1))/Block1%dxi+1-ir_pos_int
+                    
+                    do j=1,nj
+                        do k=1,nk
+                            ! First get s1
+                            s1 = &
+                            Block1%primitive_IV(ir_pos_int,j,k,Block1%s1_)*(1.0d0-weight)+&
+                            Block1%primitive_IV(ir_pos_int+1,j,k,Block1%s1_)*weight
+                            
+                            ! Get the area of this piece at r
+                            ! with respect to the total area at
+                            ! r.
+                            ! Since we use YinYang coordiate, the
+                            ! total area is not 4pi r^2, but the sum
+                            ! of the two Yin + Yang pieces.
+
+                            dS = (cos(Block1%xj_F(j))-cos(Block1%xj_F(j+1)))*&
+                                (Block1%xk_F(k+1)-Block1%xk_F(k))&
+                                /(solid_angle_tot)
+                            
+                            ! Add this piece to data.
+                            log1%data_SaveLog(ir) = log1%data_SaveLog(ir) &
+                                + s1 * dS
+                        end do
+                    end do
+                case('vrms')
+                    ! This is the average vrms at this r.
+                    ! get position index of this r in xi_I
+                    ir_pos_int=int((r-Block1%xi_I(1))/Block1%dxi)+1
+
+                    ! weight is the fraction part
+                    weight=(r-Block1%xi_I(1))/Block1%dxi+1-ir_pos_int
+                    
+                    do j=1,nj
+                        do k=1,nk
+                            ! First get vrms
+                            primitive_I(:) = &
+                                Block1%primitive_IV(ir_pos_int,j,k,:)*(1.0d0-weight)+&
+                                Block1%primitive_IV(ir_pos_int+1,j,k,:)*weight
+
+                            vrms = sqrt(primitive_I(Block1%vr_)**2 + &
+                                primitive_I(Block1%vt_)**2 + &
+                                primitive_I(Block1%vp_)**2)
+                            
+                            ! Get the area of this piece at r
+                            ! with respect to the total area at
+                            ! r.
+                            ! Since we use YinYang coordiate, the
+                            ! total area is not 4pi r^2, but the sum
+                            ! of the two Yin + Yang pieces.
+
+                            dS = (cos(Block1%xj_F(j))-cos(Block1%xj_F(j+1)))*&
+                                (Block1%xk_F(k+1)-Block1%xk_F(k))&
+                                /(solid_angle_tot)
+                            
+                            ! Add this piece to data.
+                            log1%data_SaveLog(ir) = log1%data_SaveLog(ir) &
+                                + vrms * dS
+                        end do
+                    end do
                 end select
             end if
         end do

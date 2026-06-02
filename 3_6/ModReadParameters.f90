@@ -17,7 +17,9 @@ module ModReadParameters
                                     rLevelInitial,rLevelOption,&
                                     nAMRs,AMRs,AMRType,&
                                     if_do_echo,nStepsEcho,&
-                                    if_involve_B,DivB_method,DivB_option
+                                    if_involve_B,DivB_method,DivB_option,&
+                                    eos_filename,entropy_filename,opacity_filename,&
+                                    if_read_ModelS
     use ModControl,         only:   if_param_file_opened
     use ModLogicalUnits,    only:   iUnit_lookup_table, iUnit_plot_base, iUnit_log_base
     use ModLookUpTable,     only:   ModLookUpTable_Read
@@ -277,12 +279,14 @@ module ModReadParameters
         case('default','Default','DEFAULT')
             ! Set the logtype to be a standard one.
 
-            nLogs=4
+            nLogs=6
             allocate(Logs(nLogs))
             Logs(1)%VarName='Le'
             Logs(2)%VarName='Lk'
             Logs(3)%VarName='Lr'
             Logs(4)%VarName='Ls'
+            Logs(5)%VarName='s1'
+            Logs(6)%VarName='vrms'
             do iLog=1,nLogs
                 Logs(iLog)%logical_unit=iUnit_log_base+iLog
                 Logs(iLog)%charType='layer'
@@ -629,32 +633,29 @@ module ModReadParameters
         implicit none
         integer,intent(in)              ::  logical_unit
         integer                         ::  ios                 ! For reading
-        character(len=256)              ::  eos_file
-        character(len=256)              ::  entropy_file
-        character(len=256)              ::  opacity_file
 
-        read(logical_unit, *, iostat=ios) eos_file
+        read(logical_unit, *, iostat=ios) if_read_ModelS
         if (ios/=0) then
-            write(*,*) "Error reading eos_file."
-            stop 1
-        end if
-        read(logical_unit, *, iostat=ios) entropy_file
-        if (ios/=0) then
-            write(*,*) "Error reading entropy_file."
-            stop 1
-        end if
-        read(logical_unit, *, iostat=ios) opacity_file
-        if (ios/=0) then
-            write(*,*) "Error reading opacity_file."
+            write(*,*) "Error reading if_read_ModelS."
             stop 1
         end if
 
-        call ModLookUpTable_Read(eos_file,     logical_unit=iUnit_lookup_table)
-        call ModLookUpTable_Read(entropy_file, logical_unit=iUnit_lookup_table)
-        call ModLookUpTable_Read(opacity_file, logical_unit=iUnit_lookup_table)
+        if (.not. if_read_ModelS) return
 
-        call ModEOS_init
-        call ModOpacity_init
-        call ModStratification_new_Init
+        read(logical_unit, *, iostat=ios) eos_filename
+        if (ios/=0) then
+            write(*,*) "Error reading eos_filename."
+            stop 1
+        end if
+        read(logical_unit, *, iostat=ios) entropy_filename
+        if (ios/=0) then
+            write(*,*) "Error reading entropy_filename."
+            stop 1
+        end if
+        read(logical_unit, *, iostat=ios) opacity_filename
+        if (ios/=0) then
+            write(*,*) "Error reading opacity_filename."
+            stop 1
+        end if
     end subroutine ModReadParameters_read_ModelS
 end module ModReadParameters

@@ -4,7 +4,8 @@ program test1
     use ModControl,         only:   t,dt,iStep,iStatus,if_param_file_opened,&
                                     nMaxBlocksPerRank
     use ModParameters,      only:   MpiSize, MpiRank, r_range, nSteps, DoCheck,&
-                                    if_do_echo, nStepsEcho
+                                    if_do_echo, nStepsEcho, if_check_heating,&
+                                    if_read_ModelS
     use ModReadParameters,  only:   ModReadParameters_read
     use ModYinYangTree,     only:   YYTree,&
                                     YinYangTree_InitTree,&
@@ -14,11 +15,12 @@ program test1
                                     ModCommunication_SendRecvGC_new
     use ModSavePlot,        only:   ModSave_DoAll
     use ModSaveLog,         only:   ModSaveLog_DoAll
-    use ModCheck,           only:   ModCheck_primitive
+    use ModCheck,           only:   ModCheck_primitive, ModCheck_DiffCool_Power
     use ModAdvance,         only:   ModAdvance_rk4
     use ModAMR,             only:   ModAMR_set_grid
     use ModInitiation,      only:   ModInitiation_DoAll
     use ModLogicalUnits,    only:   iUnit_param_file
+    use ModStratification_new, only:   ModStratification_new_Init
     use MPI
 
     implicit none
@@ -39,9 +41,17 @@ program test1
     call ModReadParameters_read(param_file, iUnit_param_file)
     if (MpiRank==0) print *, 'read parameters'
 
+    ! Immediate calls after the parameter reads.
+    ! 1. ModelS
+    if (if_read_ModelS) then
+        call ModStratification_new_Init
+        if (MpiRank==0) print *, 'initialized stratification'
+    end if
+
     call test1_INITIATION(Tree)
     if (MpiRank==0) print *, 'initialized tree and state'
     !if (DoCheck) call ModCheck_primitive(Tree,.true.)
+    if (if_check_heating) call ModCheck_DiffCool_Power(Tree)
 
     ! The main loop. Now I don't use iStep=1,nSteps
     ! since there might be checkpoints.

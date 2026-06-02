@@ -3,7 +3,7 @@
 
 #DOMAIN
 0.7             r_range(1)
-0.98            r_range(2)
+0.96            r_range(2)
 
 #GRID
 6              ni
@@ -13,9 +13,10 @@
 
 #RADIALGRID
 3               rLevelInitial
-1               rLevelOption
+2               rLevelOption
 
 #MODELS
+T               if_read_ModelS
 FreeEOS_v51_x0.75_z0.02.dat
 FreeEOS_v51_x0.75_z0.02_entropy_contour_9.252752.dat
 opacity_x70_y28_z2.dat
@@ -72,7 +73,7 @@ T               if_do_echo
 #SAVEPLOT
 1               nPlots
 3D              charType
-2000
+1000
 
 #SAVELOG
 default

@@ -91,5 +91,11 @@ module ModParameters
     logical             ::      if_do_echo=.false.
     integer             ::      nStepsEcho=10
 
-    
+
+    ! If read stratification related tables
+    ! The filenames for the tables.
+    logical             ::      if_read_ModelS
+    character(len=256)  ::      eos_filename
+    character(len=256)  ::      entropy_filename
+    character(len=256)  ::      opacity_filename
 end module ModParameters

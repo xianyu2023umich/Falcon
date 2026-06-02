@@ -1,13 +1,20 @@
 module ModStratification_new
 
-    use ModParameters,  only: r_range_Rsun
-    use ModConst,       only: dpi,G_CGS,rad_a__CGS,speed_c__CGS,R_sun__CGS
-    use ModLookUpTable, only: LookUpTables,LookUpTable,nLookUpTables
-    use ModEOS,         only: EOS_table,nlogQ_EOS_table,nlogT_EOS_table,logQ_EOS_table,logT_EOS_table
-    use ModOpacity,     only: Opacity_table,nlogT_opacity,nlogR_opacity,logT_opacity,logR_opacity
-    use ModMath,        only: ModMath_1D_interpol_0D,ModMath_1D_interpol_1D,&
-                              ModMath_2D_interpolate_1D,ModMath_2D_interpol_1D,&
-                              ModMath_value_locate_1D
+    use ModLogicalUnits,only:   iUnit_lookup_table
+    use ModParameters,  only:   r_range_Rsun,&
+                                eos_filename,entropy_filename,opacity_filename
+    use ModConst,       only:   dpi,G_CGS,rad_a__CGS,speed_c__CGS,R_sun__CGS
+    use ModLookUpTable, only:   LookUpTables,LookUpTable,nLookUpTables,&
+                                ModLookUpTable_Read
+    use ModEOS,         only:   EOS_table,nlogQ_EOS_table,nlogT_EOS_table,&
+                                logQ_EOS_table,logT_EOS_table,&
+                                ModEOS_init
+    use ModOpacity,     only:   Opacity_table,nlogT_opacity,nlogR_opacity,&
+                                logT_opacity,logR_opacity,&
+                                ModOpacity_init
+    use ModMath,        only:   ModMath_1D_interpol_0D,ModMath_1D_interpol_1D,&
+                                ModMath_2D_interpolate_1D,ModMath_2D_interpol_1D,&
+                                ModMath_value_locate_1D
 
     implicit none
 
@@ -61,8 +68,16 @@ module ModStratification_new
         implicit none
         integer :: iLookUpTable
 
-        ! Determine which are the entropy contour and EOS table.
+        ! Setup the lookuptables. Do the initiation of EOS and Opacity.
+        call ModLookUpTable_Read(eos_filename,     logical_unit=iUnit_lookup_table)
+        call ModLookUpTable_Read(entropy_filename, logical_unit=iUnit_lookup_table)
+        call ModLookUpTable_Read(opacity_filename, logical_unit=iUnit_lookup_table)
 
+        ! Do the initiations
+        call ModEOS_init
+        call ModOpacity_init
+
+        ! Determine which are the entropy contour and EOS table.
         do iLookUpTable=1,nLookUpTables
             if (LookUpTables(iLookUpTable)%name == 'Constant_entropy_contour') then
                 entropy_contour => LookUpTables(iLookUpTable)

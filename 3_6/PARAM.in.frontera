@@ -16,6 +16,7 @@
 2               rLevelOption
 
 #MODELS
+T               if_read_ModelS
 FreeEOS_v51_x0.75_z0.02.dat
 FreeEOS_v51_x0.75_z0.02_entropy_contour_9.252752.dat
 opacity_x70_y28_z2.dat
