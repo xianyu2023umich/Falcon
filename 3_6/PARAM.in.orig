@@ -47,6 +47,9 @@ BP              InitiationB_type
 #DOCHECK
 T               DoCheck
 
+#SAVELOG
+default
+
 #UPDATEB
 F               if_involve_B
 

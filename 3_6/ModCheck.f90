@@ -67,6 +67,39 @@ module ModCheck
             end do
         end if
 
-        
+
     end subroutine ModCheck_primitive
+
+    subroutine ModCheck_DiffCool_Power(Tree)
+        implicit none
+        type(YYTree),target     ::  Tree
+        type(BlockType),pointer ::  Block1
+        integer                 ::  iLocalBlock,ir,it,ip
+        real(8)                 ::  P_diff_local,P_cool_local
+        real(8)                 ::  P_diff_total,P_cool_total
+        integer                 ::  ierr
+
+        P_diff_local = 0.0d0
+        P_cool_local = 0.0d0
+
+        do iLocalBlock = 1, Tree%nLocalBlocks
+            Block1 => Tree%LocalBlocks(iLocalBlock)
+            do ip = 1, nk
+                do it = 1, nj
+                    do ir = 1, ni
+                        P_diff_local = P_diff_local + Block1%diffusion_I(ir) * Block1%V_LLL(ir,it,ip)
+                        P_cool_local = P_cool_local + Block1%cooling_I(ir)   * Block1%V_LLL(ir,it,ip)
+                    end do
+                end do
+            end do
+        end do
+
+        call MPI_Reduce(P_diff_local, P_diff_total, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD, ierr)
+        call MPI_Reduce(P_cool_local, P_cool_total, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD, ierr)
+
+        if (MpiRank==0) write(*,'(a,es13.5,a,es13.5)') &
+            'Diffusion power [erg/s] =', P_diff_total, &
+            '   Cooling power [erg/s] =', P_cool_total
+    end subroutine ModCheck_DiffCool_Power
+
 end module ModCheck

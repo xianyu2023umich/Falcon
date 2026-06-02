@@ -148,17 +148,19 @@ module ModSaveLog
         do ir=1,Log1%nr_SaveLog
             if (Log1%r_list_SaveLog(ir)>=Block1%xijk_range(1,1) .and. &
                 Log1%r_list_SaveLog(ir)<=Block1%xijk_range(1,2)) then
-                
-                ! get r, and the position index of this r
-                r=Log1%r_list_SaveLog(ir)
-                ir_pos_int=int((r-Block1%xi_I(1))/Block1%dxi)+1
 
-                ! weight is the fraction part
-                weight=(r-Block1%xi_I(1))/Block1%dxi+1-ir_pos_int
+                ! Get this r
+                r=Log1%r_list_SaveLog(ir)
 
                 ! Select which to calculate
                 select case (Log1%VarName)
                 case ('Le')
+                    ! get position index of this r in xi_I
+                    ir_pos_int=int((r-Block1%xi_I(1))/Block1%dxi)+1
+
+                    ! weight is the fraction part
+                    weight=(r-Block1%xi_I(1))/Block1%dxi+1-ir_pos_int
+
                     ! Perturbed enthalpy flux
                     ! = \int (rho0 * e1 + p1 - p0 * rho1/rho0) v_r dS
                     ! Which means we need e1.
@@ -208,6 +210,12 @@ module ModSaveLog
                         end do
                     end do
                 case ('Lk')
+                    ! get position index of this r in xi_I
+                    ir_pos_int=int((r-Block1%xi_I(1))/Block1%dxi)+1
+
+                    ! weight is the fraction part
+                    weight=(r-Block1%xi_I(1))/Block1%dxi+1-ir_pos_int
+
                     ! Kinetic energy flux
                     ! = \int 0.5 rho0 v^2 v_r dS
                     ! First get background rho0 at this r.
@@ -236,13 +244,27 @@ module ModSaveLog
                         end do
                     end do
                 case ('Lr')
+                    ! get r, and the position index of this r
+                    ! Attention: diffusion are defined at the faces,
+                    ! so we need to do interpolation of xi_F.
+                    ir_pos_int=int((r-Block1%xi_F(1))/Block1%dxi)+1
+
+                    ! For xi_F position, if it's >= ni+1, then we
+                    ! need to minus 1 to forbid out of range.
+                    ! This doesn't affect weight because weight
+                    ! will be automatically adjusted. 
+                    if (ir_pos_int>=ni+1) ir_pos_int=ni
+
+                    ! weight is the fraction part
+                    weight=(r-Block1%xi_F(1))/Block1%dxi+1-ir_pos_int
+
                     ! Since the radiative flux is uniform, 
                     ! just do one interpolation and get the
                     ! total area and then get the flux.
 
                     ! The radiative flux
-                    radiative_flux = Block1%diffusion_flux_I(ir_pos_int)*(1.0d0-weight)+&
-                        Block1%diffusion_flux_I(ir_pos_int+1)*(weight)
+                    radiative_flux = Block1%diffusion_flux_F(ir_pos_int)*(1.0d0-weight)+&
+                        Block1%diffusion_flux_F(ir_pos_int+1)*(weight)
                     
                     ! Get the total area of this block at r.
                     dS = r ** 2 * (cos(Block1%xj_F(1))-cos(Block1%xj_F(nj+1)))*&
@@ -252,10 +274,24 @@ module ModSaveLog
                     log1%data_SaveLog(ir) = log1%data_SaveLog(ir) &
                         + radiative_flux * dS
                 case ('Ls')
+                    ! get r, and the position index of this r
+                    ! Attention: diffusion are defined at the faces,
+                    ! so we need to do interpolation of xi_F.
+                    ir_pos_int=int((r-Block1%xi_F(1))/Block1%dxi)+1
+
+                    ! For xi_F position, if it's >= ni+1, then we
+                    ! need to minus 1 to forbid out of range.
+                    ! This doesn't affect weight because weight
+                    ! will be automatically adjusted. 
+                    if (ir_pos_int>=ni+1) ir_pos_int=ni
+
+                    ! weight is the fraction part
+                    weight=(r-Block1%xi_F(1))/Block1%dxi+1-ir_pos_int
+                    
                     ! Ls is similar to Lr.
                     ! The cooling flux
-                    cooling_flux = Block1%cooling_flux_I(ir_pos_int)*(1.0d0-weight)+&
-                        Block1%cooling_flux_I(ir_pos_int+1)*(weight)
+                    cooling_flux = Block1%cooling_flux_F(ir_pos_int)*(1.0d0-weight)+&
+                        Block1%cooling_flux_F(ir_pos_int+1)*(weight)
                     
                     ! Get the total area of this block at r.
                     dS = r ** 2 * (cos(Block1%xj_F(1))-cos(Block1%xj_F(nj+1)))*&

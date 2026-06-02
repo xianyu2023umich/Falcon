@@ -11,7 +11,7 @@ module ModReadParameters
                                     Initiation_type,Initiation_type_index,randVelocity_rms,&
                                     InitiationB_type,InitiationB_type_index,Bphi_uniform,&
                                     iGeometry,&
-                                    DoCheck,&
+                                    DoCheck,if_check_heating,&
                                     Plots,nPlots,PlotType,&
                                     Logs,nLogs,LogType,&
                                     rLevelInitial,rLevelOption,&
@@ -184,6 +184,13 @@ module ModReadParameters
                     read(logical_unit, *, iostat=ios) DoCheck
                     if (ios/=0) then
                         write(*,*) "Error from ",name_sub,": Error reading DoCheck"
+                        stop 1
+                    end if
+
+                case("#CHECKHEATING")
+                    read(logical_unit, *, iostat=ios) if_check_heating
+                    if (ios/=0) then
+                        write(*,*) "Error from ",name_sub,": Error reading if_check_heating"
                         stop 1
                     end if
 

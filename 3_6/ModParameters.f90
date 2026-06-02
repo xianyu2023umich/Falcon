@@ -74,6 +74,7 @@ module ModParameters
     integer             ::      Multigrid_nLevels
 
     logical             ::      DoCheck=.false.
+    logical             ::      if_check_heating=.false.
 
     integer             ::      nAMRs
     type(AMRType),&

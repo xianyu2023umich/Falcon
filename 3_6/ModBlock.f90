@@ -82,8 +82,8 @@ module ModBlock
         real(8),allocatable         ::  gamma3_I(:)          ! background gamma3
         real(8),allocatable         ::  diffusion_I(:)       ! background diffusion
         real(8),allocatable         ::  cooling_I(:)         ! artificial cooling
-        real(8),allocatable         ::  diffusion_flux_I(:)  ! background diffusion flux
-        real(8),allocatable         ::  cooling_flux_I(:)    ! artificial cooling flux
+        real(8),allocatable         ::  diffusion_flux_F(:)  ! background diffusion flux
+        real(8),allocatable         ::  cooling_flux_F(:)    ! artificial cooling flux
         real(8),allocatable         ::  Xi_rsst_I(:)         ! For rsst
 
         ! 3D arrays for convection zone
@@ -212,9 +212,11 @@ module ModBlock
         allocate(Block1%gamma3_I        (-ng+1:ni+ng))
         allocate(Block1%diffusion_I     (-ng+1:ni+ng))
         allocate(Block1%cooling_I       (-ng+1:ni+ng))
-        allocate(Block1%diffusion_flux_I(-ng+1:ni+ng))
-        allocate(Block1%cooling_flux_I  (-ng+1:ni+ng))
         allocate(Block1%Xi_rsst_I       (-ng+1:ni+ng))
+
+        ! The fluxes should be at the r faces.
+        allocate(Block1%diffusion_flux_F(1:ni+1))
+        allocate(Block1%cooling_flux_F  (1:ni+1))
 
         ! Allocate 3D arrays
         allocate(Block1%gamma1_III          (-ng+1:ni+ng,-ng+1:nj+ng,-ng+1:nk+ng))
@@ -249,11 +251,37 @@ module ModBlock
            Block1%te0_I(i)      =   T0__CGS
            Block1%gamma1_I(i)   =   gamma1
            Block1%gamma3_I(i)   =   gamma3
-           Block1%diffusion_I(i)=   diffusion__CGS
-           Block1%cooling_I(i)  =   cooling__CGS   
-           Block1%diffusion_flux_I(i)=diffusion_flux__CGS
-           Block1%cooling_flux_I(i)  =cooling_flux__CGS
            Block1%Xi_rsst_I(i)  =   Xi_rsst
+        end do
+
+        ! Get the fluxes at the faces.
+        do i=1,ni+1
+            call ModStratification_new_get_vars(Block1%xi_F(i),&
+               g__CGS,rho0__CGS,p0__CGS,T0__CGS,gamma1,gamma3,kap__CGS,&
+               diffusion__CGS,cooling__CGS,diffusion_flux__CGS,cooling_flux__CGS,Xi_rsst)
+            
+           ! Set the scales
+           Block1%diffusion_flux_F(i) = diffusion_flux__CGS
+           Block1%cooling_flux_F(i)   = cooling_flux__CGS
+        end do
+
+        ! Get the diffusion_I and cooling_I by:
+        ! dP/dV = (F_up * A_up - F_down * A_down)/V
+        ! Here we can arbitrarily choose the whole shell
+        ! between up and down, since the diffusion and &
+        ! cooling are only functions of r.
+        do i=1,ni
+            ! Diffusion
+            Block1%diffusion_I(i)=&
+                (Block1%diffusion_flux_F(i+1)*Block1%xi_F(i+1)**2   &   ! Up face
+                -Block1%diffusion_flux_F(i)*Block1%xi_F(i)**2)      &   ! Down face
+                /(Block1%xi_F(i+1)**3-Block1%xi_F(i)**3)*3.0            ! Volume
+                
+            ! Cooling
+            Block1%cooling_I(i)=&
+                (Block1%cooling_flux_F(i+1)*Block1%xi_F(i+1)**2     &   ! Up face
+                -Block1%cooling_flux_F(i)*Block1%xi_F(i)**2)        &   ! Down face
+                /(Block1%xi_F(i+1)**3-Block1%xi_F(i)**3)*3.0            ! Volume
         end do
 
         ! Fulfill the 3D arrays with 1D profiles
@@ -512,8 +540,8 @@ module ModBlock
             deallocate(Block1%gamma3_I    )
             deallocate(Block1%diffusion_I )
             deallocate(Block1%cooling_I   )
-            deallocate(Block1%diffusion_flux_I)
-            deallocate(Block1%cooling_flux_I)
+            deallocate(Block1%diffusion_flux_F)
+            deallocate(Block1%cooling_flux_F)
             deallocate(Block1%Xi_rsst_I   )
     
             ! DeAllocate 3D arrays
