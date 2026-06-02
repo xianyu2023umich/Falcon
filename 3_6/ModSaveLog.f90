@@ -57,7 +57,7 @@ module ModSaveLog
                         allocate(Log1%data_SaveLog(Log1%nr_SaveLog))
                         Log1%data_SaveLog = 0.0d0
                     else
-                        if (MpiRank==0) print *, 'Warning: ' + &
+                        if (MpiRank==0) print *, 'Warning: ' // &
                             'nr_SaveLog should be larger than 1 for layer log.'
                     end if
 
