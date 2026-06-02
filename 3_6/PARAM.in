@@ -6,13 +6,14 @@
 0.98            r_range(2)
 
 #GRID
-6              ni
-9              nj
-27              nk
+8              ni
+8              nj
+24              nk
 2               ng
 
 #RADIALGRID
-3
+3               rLevelInitial
+2               rLevelOption
 
 #MODELS
 FreeEOS_v51_x0.75_z0.02.dat
@@ -20,16 +21,23 @@ FreeEOS_v51_x0.75_z0.02_entropy_contour_9.252752.dat
 opacity_x70_y28_z2.dat
 
 #AMR
-1               AMR_nLevels
+3               AMR_nLevels
 F T T           rtp_if_divide
 T               if_global
 0.7             rmin
 1.0             rmax
-
-#SAVEPLOT
-1               nPlots
-3D              charType
-40
+F T T           rtp_if_divide
+T               if_global
+0.7             rmin
+1.0             rmax
+F T T           rtp_if_divide
+T               if_global
+0.7             rmin
+1.0             rmax
+F T T           rtp_if_divide
+T               if_global
+0.7             rmin
+1.0             rmax
 
 #TIMESTEPPING
 0.8             CFL
@@ -44,7 +52,7 @@ hd              MHD or HD
 harmonics         Initiation_type
 1.0d3           randVelocity_rms
 
-#INITIATIONB
+INITIATIONB
 BP              InitiationB_type
 1.0d2           Bphi_uniform
 
@@ -56,10 +64,18 @@ F               if_involve_B
 
 #ECHO
 T               if_do_echo
-10              nStepsEcho
+10               nStepsEcho
+
+#SAVEPLOT
+1               nPlots
+3D              charType
+100
+
+#SAVELOG
+default
 
 #STOP
-50              nSteps
+100             nSteps
 
 CHECKPOINT  ########################
 
@@ -72,4 +88,4 @@ T               if_do_echo
 10               nStepsEcho
 
 STOP
-100
+400

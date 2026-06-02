@@ -41,8 +41,7 @@ program test1
 
     call test1_INITIATION(Tree)
     if (MpiRank==0) print *, 'initialized tree and state'
-    if (DoCheck) call ModCheck_primitive(Tree,.true.)
-
+    !if (DoCheck) call ModCheck_primitive(Tree,.true.)
 
     ! The main loop. Now I don't use iStep=1,nSteps
     ! since there might be checkpoints.

@@ -1,7 +1,8 @@
 module ModAMR
 
     use ModMath,        only:   ModMath_IfLinesInterSect
-    use ModParameters,  only:   rLevelInitial,nAMRs,AMRs,AMRType
+    use ModParameters,  only:   rLevelInitial,rLevelOption,&
+                                nAMRs,AMRs,AMRType
     use ModYinYangTree, only:   YYTree,TreeNode,&
                                 YinYangTree_Divide,&
                                 YinYangTree_Divide_r
@@ -53,7 +54,7 @@ module ModAMR
         integer                     ::  iChild
 
         if (Node%if_leaf) then
-            call YinYangTree_Divide_r(Tree,Node,i_option=1)
+            call YinYangTree_Divide_r(Tree,Node,i_option=rLevelOption)
         else
             do iChild=1,size(Node%Children)
                 call ModAMR_Divide_r_grid_OneBranch(Tree,Node%Children(iChild))

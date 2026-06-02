@@ -184,7 +184,7 @@ module ModYinYangTree
                 case (1)
                     r_middle=ModStratification_new_get_middle_r(Node%rtp_range(1,:))
                 case (2)
-                    r_middle=sum(Node%rtp_range(1,:))*0.5
+                    r_middle=sum(Node%rtp_range(1,:))*0.5d0
                 case (3)
                     r_middle=sqrt(Node%rtp_range(1,1)*Node%rtp_range(1,2))
                 end select
@@ -243,8 +243,8 @@ module ModYinYangTree
                         ! get the rtp_range1 for the child node
 
                         rtp_range1(1,:)=&
-                            rtp_range(1,1)  ** ([N_rtp(1)-ir+1.0, N_rtp(1)-ir+0.0]/N_rtp(1))/ &
-                            rtp_range(1,2)  ** ([        -ir+1.0,         -ir+0.0]/N_rtp(1))
+                            rtp_range(1,1)  *   [N_rtp(1)-ir+1.0, N_rtp(1)-ir+0.0]/N_rtp(1) - &
+                            rtp_range(1,2)  *   [        -ir+1.0,         -ir+0.0]/N_rtp(1)
 
                         rtp_range1(2,:)=&
                             rtp_range(2,1)  *   [N_rtp(2)-it+1.0, N_rtp(2)-it+0.0]/N_rtp(2) - &

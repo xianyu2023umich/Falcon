@@ -14,7 +14,7 @@ module ModReadParameters
                                     DoCheck,&
                                     Plots,nPlots,PlotType,&
                                     Logs,nLogs,LogType,&
-                                    rLevelInitial,&
+                                    rLevelInitial,rLevelOption,&
                                     nAMRs,AMRs,AMRType,&
                                     if_do_echo,nStepsEcho,&
                                     if_involve_B,DivB_method,DivB_option
@@ -97,11 +97,7 @@ module ModReadParameters
                     end if
 
                 case("#RADIALGRID")
-                    read(logical_unit, *, iostat=ios) rLevelInitial
-                    if (ios/=0) then
-                        write(*,*) "Error from ",name_sub,": Error reading rLevelInitial"
-                        stop 1
-                    end if
+                    call ModReadParameters_read_rLevel(logical_unit)
                 
                 ! AMR grid
                 case("#AMR")
@@ -232,6 +228,25 @@ module ModReadParameters
             if_param_file_opened = .False.
         end if
     end subroutine ModReadParameters_read
+
+    subroutine ModReadParameters_read_rLevel(logical_unit)
+        implicit none
+        character(len=31)               ::  name_sub='ModReadParameters_read_rLevel'
+        integer,intent(in)              :: logical_unit
+        integer                         :: ios
+
+        read(logical_unit, *, iostat=ios) rLevelInitial
+        if (ios/=0) then
+            write(*,*) "Error from ",name_sub,": Error reading rLevelInitial"
+            stop 1
+        end if
+        read(logical_unit, *, iostat=ios) rLevelOption
+        if (ios/=0) then
+            write(*,*) "Error from ",name_sub,": Error reading rLevelOption"
+            stop 1
+        end if
+
+    end subroutine ModReadParameters_read_rLevel
 
     subroutine ModReadParameters_read_SaveLog(logical_unit)
         implicit none
@@ -603,7 +618,7 @@ module ModReadParameters
         end select
     end subroutine ModReadParameters_read_Equation
 
-    subroutine ModReadParameters_read_Models(logical_unit)
+    subroutine ModReadParameters_read_ModelS(logical_unit)
         implicit none
         integer,intent(in)              ::  logical_unit
         integer                         ::  ios                 ! For reading
@@ -634,5 +649,5 @@ module ModReadParameters
         call ModEOS_init
         call ModOpacity_init
         call ModStratification_new_Init
-    end subroutine ModReadParameters_read_Models
+    end subroutine ModReadParameters_read_ModelS
 end module ModReadParameters

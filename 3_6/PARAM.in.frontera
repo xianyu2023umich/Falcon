@@ -12,7 +12,8 @@
 2               ng
 
 #RADIALGRID
-3
+3               rLevelInitial
+2               rLevelOption
 
 #MODELS
 FreeEOS_v51_x0.75_z0.02.dat

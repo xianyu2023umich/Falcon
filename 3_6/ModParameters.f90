@@ -69,6 +69,7 @@ module ModParameters
     real(8)             ::      Bphi_uniform=1.0d2
 
     integer             ::      rLevelInitial
+    integer             ::      rLevelOption
 
     integer             ::      Multigrid_nLevels
 
