@@ -210,10 +210,14 @@ module ModSaveLog
                         end do
                     end do
                 case ('Lk')
+                    ! Kinetic energy flux
+                    ! = \int 0.5 rho0 v^2 v_r dS
+                    ! First get background rho0 at this r.
+                    rho0 = Block1%rho0_I(ir_pos_int)*(1.0d0-weight)+&
+                        Block1%rho0_I(ir_pos_int+1)*weight
+                    
                     do j=1,nj
                         do k=1,nk
-                            ! Kinetic energy flux
-                            ! = \int 0.5 rho0 v^2 v_r dS
                             ! First get primitive
                             primitive_I(:) = &
                                 Block1%primitive_IV(ir_pos_int,j,k,:)*(1.0d0-weight)+&
