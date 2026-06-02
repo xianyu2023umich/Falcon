@@ -13,11 +13,13 @@ module ModReadParameters
                                     iGeometry,&
                                     DoCheck,&
                                     Plots,nPlots,PlotType,&
+                                    Logs,nLogs,LogType,&
                                     rLevelInitial,&
                                     nAMRs,AMRs,AMRType,&
                                     if_do_echo,nStepsEcho,&
                                     if_involve_B,DivB_method,DivB_option
     use ModControl,         only:   if_param_file_opened
+    use ModLogicalUnits,    only:   iUnit_lookup_table, iUnit_plot_base, iUnit_log_base
     use ModLookUpTable,     only:   ModLookUpTable_Read
     use ModEOS,             only:   ModEOS_init
     use ModOpacity,         only:   ModOpacity_init
@@ -115,8 +117,10 @@ module ModReadParameters
 
                 case("#SAVEPLOT")
                     call ModReadParameters_read_SavePlot(logical_unit)
-                    
 
+                case("#SAVELOG")
+                    call ModReadParameters_read_SaveLog(logical_unit)
+                    
                 case("#TIMESTEPPING")
                     read(logical_unit, *, iostat=ios) CFL
                     if (ios/=0) then
@@ -229,6 +233,105 @@ module ModReadParameters
         end if
     end subroutine ModReadParameters_read
 
+    subroutine ModReadParameters_read_SaveLog(logical_unit)
+        implicit none
+        character(len=31)               ::  name_sub='ModReadParameters_read_SaveLog'
+        integer,intent(in)              ::  logical_unit
+        integer                         ::  ios                 ! For reading
+        integer                         ::  iLog                ! For reading Logs
+        type(LogType),pointer           ::  Log1
+        character(len=100)              ::  ReadOption          ! For how to read
+
+        ! first read readOption
+        read(logical_unit, *, iostat=ios) ReadOption
+        if (ios/=0) then
+            write(*,*) "Error from ",name_sub,": Error reading ReadOption"
+            stop 1
+        end if
+
+        ! for default, set the logtype to be a standard one.
+        ! for read, continue reading.
+        select case(trim(adjustl(ReadOption)))
+        case('default','Default','DEFAULT')
+            ! Set the logtype to be a standard one.
+
+            nLogs=4
+            allocate(Logs(nLogs))
+            Logs(1)%VarName='Le'
+            Logs(2)%VarName='Lk'
+            Logs(3)%VarName='Lr'
+            Logs(4)%VarName='Ls'
+            do iLog=1,nLogs
+                Logs(iLog)%logical_unit=iUnit_log_base+iLog
+                Logs(iLog)%charType='layer'
+                Logs(iLog)%iType=1
+                Logs(iLog)%nStepsSaveLog=100
+                Logs(iLog)%r_range_SaveLog=[-1.0,-1.0] ! Negative means the whole domain
+                Logs(iLog)%nr_SaveLog=100
+            end do
+        case('read','Read','READ')
+            ! See how many logs we have
+            read(logical_unit, *, iostat=ios) nLogs
+            if (ios/=0) then
+                write(*,*) "Error from ",name_sub,": Error reading nLogs"
+                stop 1
+            end if
+
+            ! Allocate Logs
+            allocate(Logs(nLogs))
+
+            do iLog=1,nLogs
+                Log1=>Logs(iLog)
+                Log1%logical_unit=iUnit_log_base+iLog
+
+                ! First read name of var.
+                read(logical_unit, *, iostat=ios) Log1%VarName
+                if (ios/=0) then
+                    write(*,*) "Error from ",name_sub,": Error reading VarName=",trim(adjustl(Log1%VarName))
+                    stop 1
+                end if
+
+                ! Determine the type of log based on the name of var.
+                ! It could be volume integrated value (so just one number),
+                ! or it could be the value integrated over some layers
+                ! (so an array of numbers over the range of r).
+                !
+                ! Let's only do layer integrals first, since
+                ! our scheme is not strictly energy conserving. 
+                !
+                ! Le: perturbed enthalpy flux
+                ! Lk: kinetic energy flux
+                ! Lr: radiative energy flux
+                ! Ls: artificial cooling flux
+                select case(trim(adjustl(Log1%VarName)))
+                case('Lr','Lk','Le','Ls')
+                    Log1%charType='layer'
+                    Log1%iType=1
+                    read(logical_unit, *, iostat=ios) Log1%nStepsSaveLog
+                    if (ios/=0) then
+                        write(*,*) "Error from ",name_sub,": Error reading nStepsSaveLog for Log ",trim(adjustl(Log1%VarName))
+                        stop 1
+                    end if
+                    read(logical_unit, *, iostat=ios) Log1%r_range_SaveLog(1)
+                    if (ios/=0) then
+                        write(*,*) "Error from ",name_sub,": Error reading r_range_SaveLog(1) for Log ",trim(adjustl(Log1%VarName))
+                        stop 1
+                    end if
+                    read(logical_unit, *, iostat=ios) Log1%r_range_SaveLog(2)
+                    if (ios/=0) then
+                        write(*,*) "Error from ",name_sub,": Error reading r_range_SaveLog(2) for Log ",trim(adjustl(Log1%VarName))
+                        stop 1
+                    end if
+                    read(logical_unit, *, iostat=ios) Log1%nr_SaveLog
+                    if (ios/=0) then
+                        write(*,*) "Error from ",name_sub,": Error reading nr_SaveLog for Log ",trim(adjustl(Log1%VarName))
+                        stop 1
+                    end if
+                end select
+            end do
+        end select
+    end subroutine ModReadParameters_read_SaveLog
+
     subroutine ModReadParameters_read_UpdateB(logical_unit)
         implicit none
         character(len=31)               ::  name_sub='ModReadParameters_read_DivB'
@@ -281,7 +384,7 @@ module ModReadParameters
         ! Read each plot
         do iPlot=1,nPlots
             Plot1=>Plots(iPlot)
-            Plot1%logical_unit=10+iPlot
+            Plot1%logical_unit=iUnit_plot_base+iPlot
 
             ! First see which type it is
             read(logical_unit, *, iostat=ios) Plot1%charType
@@ -524,9 +627,9 @@ module ModReadParameters
             stop 1
         end if
 
-        call ModLookUpTable_Read(eos_file, logical_unit=2)
-        call ModLookUpTable_Read(entropy_file, logical_unit=2)
-        call ModLookUpTable_Read(opacity_file, logical_unit=2)
+        call ModLookUpTable_Read(eos_file,     logical_unit=iUnit_lookup_table)
+        call ModLookUpTable_Read(entropy_file, logical_unit=iUnit_lookup_table)
+        call ModLookUpTable_Read(opacity_file, logical_unit=iUnit_lookup_table)
 
         call ModEOS_init
         call ModOpacity_init

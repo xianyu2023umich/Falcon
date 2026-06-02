@@ -1,5 +1,6 @@
 module ModSavePlot
 
+    use ModControl,     only:   iStep,t,dt
     use ieee_arithmetic, only:  ieee_is_nan
     use ModBlock,       only:   BlockType
     use ModYinYang,     only:   ModYinYang_CoordConv_0D,&
@@ -13,10 +14,9 @@ module ModSavePlot
 
     contains
 
-    subroutine ModSave_DoAll(Tree,iStep)
+    subroutine ModSave_DoAll(Tree)
         implicit none
         type(YYTree),intent(in),target      ::  Tree
-        integer,intent(in)                  ::  iStep
         character(len=8)                    ::  iStep_char
 
         integer                             ::  iPlot
@@ -68,11 +68,6 @@ module ModSavePlot
     !    integer                             ::  iLocalBlock
     !    type(BlockType),pointer             ::  Block1
     !    logical                             ::  if_inside_single
-
-
-
-
-
     !end subroutine ModSave_Energy_Flux
 
     ! It's better to use MPI_Reduce to save the data.
@@ -292,9 +287,9 @@ module ModSavePlot
         if (if_join==1 .and. MpiSubRank==0) then
             
             open(unit=logical_unit,file=filename, status='replace', action='write')
-            write(10,*) 'TITLE = "My Data on Sphere"'
-            write(10,*) 'VARIABLES = "K", "J", "I", "X", "Y", "Z", "Rho1", "Vr", "Vt", "Vp", "S1"'
-            write(10,*) 'ZONE T="STRUCTURE GRID", I=2, J=', ntp_out(1), ', K=', ntp_out(2), ', F=POINT'
+            write(logical_unit,*) 'TITLE = "My Data on Sphere"'
+            write(logical_unit,*) 'VARIABLES = "K", "J", "I", "X", "Y", "Z", "Rho1", "Vr", "Vt", "Vp", "S1"'
+            write(logical_unit,*) 'ZONE T="STRUCTURE GRID", I=2, J=', ntp_out(1), ', K=', ntp_out(2), ', F=POINT'
 
             do ip=1,ntp_out(2)
                 do it=1,ntp_out(1)

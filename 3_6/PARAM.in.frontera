@@ -38,11 +38,6 @@ T               if_global
 0.7             rmin
 1.0             rmax
 
-#SAVEPLOT
-1               nPlots
-3D              charType
-40
-
 #TIMESTEPPING
 0.8             CFL
 
@@ -69,6 +64,14 @@ F               if_involve_B
 #ECHO
 T               if_do_echo
 10              nStepsEcho
+
+#SAVEPLOT
+1               nPlots
+3D              charType
+40
+
+#SAVELOG
+default
 
 #STOP
 50              nSteps

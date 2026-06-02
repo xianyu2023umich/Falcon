@@ -13,10 +13,12 @@ program test1
     use ModCommunication,   only:   ModCommunication_SetGCAll, &
                                     ModCommunication_SendRecvGC_new
     use ModSavePlot,        only:   ModSave_DoAll
+    use ModSaveLog,         only:   ModSaveLog_DoAll
     use ModCheck,           only:   ModCheck_primitive
     use ModAdvance,         only:   ModAdvance_rk4
     use ModAMR,             only:   ModAMR_set_grid
     use ModInitiation,      only:   ModInitiation_DoAll
+    use ModLogicalUnits,    only:   iUnit_param_file
     use MPI
 
     implicit none
@@ -24,7 +26,6 @@ program test1
     type(YYTree),target         ::  Tree
     integer                     ::  ierr
     character(len=*), parameter ::  param_file = 'PARAM.in'
-    integer                     ::  Logical_unit_param_file = 42
     real(8)                     ::  t1_cpu,t2_cpu
 
     iStatus=0
@@ -35,7 +36,7 @@ program test1
     ! First time to read parameters. This will read all parameters 
     ! until the checkpoint section. If there is no checkpoint section, 
     ! it will read all parameters.
-    call ModReadParameters_read(param_file, Logical_unit_param_file)
+    call ModReadParameters_read(param_file, iUnit_param_file)
     if (MpiRank==0) print *, 'read parameters'
 
     call test1_INITIATION(Tree)
@@ -71,7 +72,8 @@ program test1
         end if
 
         ! Save
-        call ModSave_DoAll(Tree,iStep)
+        call ModSave_DoAll(Tree)
+        call ModSaveLog_DoAll(Tree)
 
         ! See if we have reached the total nSteps.
         ! If yes then read param again. 
@@ -87,7 +89,7 @@ program test1
             ! If no then there should be no change to nStep,
             ! so the run will naturally stop.
             if (if_param_file_opened) then
-                call ModReadParameters_read(param_file, Logical_unit_param_file)
+                call ModReadParameters_read(param_file, iUnit_param_file)
                 call YinYangTree_UpdateAll(Tree,1)
             end if
             

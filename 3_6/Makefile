@@ -6,15 +6,14 @@ test0_OBJ   =   ModMath.o
 
 test1_PGM	=	test1.exe
 test1_MPIOBJ=	ModCommunication.o 	ModCheck.o \
-				ModAdvance.o		
+				ModAdvance.o		ModSavePlot.o		ModSaveLog.o
 test1_OBJ   =   ModYinYang.o		ModDerivative.o		ModSpherical.o		 \
-				ModConst.o			ModParameters.o		ModLinReconstruct.o ModLookUpTable.o  \
+				ModConst.o			ModParameters.o		ModLinReconstruct_old.o ModLookUpTable.o  \
 				ModEOS.o			ModOpacity.o		ModMath.o 			ModStratification_new.o\
 				ModAllocation.o	    ModControl.o		ModBlock.o \
-				ModBoundary.o		ModDiffusion.o      ModDivB.o			ModEquation.o       	\
+				ModBoundary.o		ModDiffusion_old.o      ModDivB.o			ModEquation.o       	\
 				ModYinYangTree.o   	ModAMR.o			ModInitiation.o		\
-			    ModReadParameters.o	ModGC.o			    ModWaveSpeed.o		ModTimeStep.o		\
-				ModSavePlot.o
+			    ModLogicalUnits.o	ModReadParameters.o	ModGC.o			    ModWaveSpeed.o		ModTimeStep.o		\
 
 test_CH_PGM =   test_coronalheating.exe
 test_CH_OBJ =   ModConst.o          ModParameters.o     ModStratification.o ModBlock.o          \
@@ -45,28 +44,28 @@ test_ModAdvance_OBJ =   ModConst.o ModLookUpTable.o ModMath.o ModEOS.o ModOpacit
 				ModStratification.o ModStratification_new.o ModControl.o ModAllocation.o ModYinYang.o \
 				ModBlock.o ModYinYangTree.o ModGC.o ModBoundary.o ModDerivative.o ModSpherical.o ModLinReconstruct.o \
 				ModDiffusion.o ModEquation.o ModTimeStep.o ModCommunication.o ModCheck.o \
-				ModReadParameters.o ModAdvance.o
+				ModLogicalUnits.o ModReadParameters.o ModAdvance.o
 
 test_ModSavePlot_PGM =  test_ModSavePlot.exe
 test_ModSavePlot_OBJ =   ModConst.o ModLookUpTable.o ModMath.o ModEOS.o ModOpacity.o ModParameters.o \
 				ModStratification.o ModStratification_new.o ModControl.o ModAllocation.o ModYinYang.o \
 				ModBlock.o ModYinYangTree.o ModGC.o ModBoundary.o ModDerivative.o ModSpherical.o ModLinReconstruct.o \
 				ModDiffusion.o ModEquation.o ModTimeStep.o ModCommunication.o ModCheck.o \
-				ModReadParameters.o ModAMR.o ModInitiation.o ModSavePlot.o
+				ModLogicalUnits.o ModReadParameters.o ModAMR.o ModInitiation.o ModSavePlot.o
 
 test_ModAMR_PGM =   test_ModAMR.exe
 test_ModAMR_OBJ =   ModConst.o ModLookUpTable.o ModMath.o ModEOS.o ModOpacity.o ModParameters.o \
 				ModStratification.o ModStratification_new.o ModControl.o ModAllocation.o ModYinYang.o \
 				ModBlock.o ModYinYangTree.o ModGC.o ModBoundary.o ModDerivative.o ModSpherical.o ModLinReconstruct.o \
 				ModDiffusion.o ModEquation.o ModTimeStep.o ModCommunication.o ModCheck.o \
-				ModReadParameters.o ModAMR.o
+				ModLogicalUnits.o ModReadParameters.o ModAMR.o
 
 test_ModInitiation_PGM =   test_ModInitiation.exe
 test_ModInitiation_OBJ =   ModConst.o ModLookUpTable.o ModMath.o ModEOS.o ModOpacity.o ModParameters.o \
 				ModStratification.o ModStratification_new.o ModControl.o ModAllocation.o ModYinYang.o \
 				ModBlock.o ModYinYangTree.o ModGC.o ModBoundary.o ModDerivative.o ModSpherical.o ModLinReconstruct.o \
 				ModDiffusion.o ModEquation.o ModTimeStep.o ModCommunication.o ModCheck.o \
-				ModReadParameters.o ModAMR.o ModInitiation.o ModSavePlot.o
+				ModLogicalUnits.o ModReadParameters.o ModAMR.o ModInitiation.o ModSavePlot.o
 
 
 #$(test0_OBJ)	:	%.o	:	%.f90
@@ -124,9 +123,6 @@ test_ModCommunication_compile: ModConst.o ModLookUpTable.o ModMath.o ModEOS.o Mo
 				ModStratification.o ModStratification_new.o ModControl.o ModAllocation.o ModYinYang.o \
 				ModBlock.o ModYinYangTree.o ModGC.o ModCommunication.o
 	@echo "ModCommunication compiled successfully."
-
-ModSavePlot.o: ModSavePlot.f90
-	$(MPIF90)	-c 	$< 	-o 	$@
 
 %.o: %.f90
 	$(GFORTRAN)	-c 	$< 	-o 	$@

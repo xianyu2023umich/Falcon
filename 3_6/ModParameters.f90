@@ -1,11 +1,23 @@
 module ModParameters
 
+    type LogType
+        character(len=100)  ::  VarName                     ! Volume or layers
+        character(len=100)  ::  charType                    ! Volume or layers
+        integer         ::      iType                       ! 0: volume, 1: layers
+        integer         ::      nStepsSaveLog
+        integer         ::      logical_unit
+        real(8)         ::      r_range_SaveLog(2)          ! in cgs
+        integer         ::      nr_SaveLog         
+        real(8),allocatable ::  r_list_SaveLog(:)           ! in cgs         
+        real(8),allocatable ::  data_SaveLog(:)             ! the data to be saved, which will be allocated in ModSaveLog_DoAll 
+    end type LogType
+
     type PlotType
         character(len=100)  ::  charType
         integer         ::      iType
         integer         ::      nStepsSavePlot
         integer         ::      logical_unit
-        logical             ::      if_cube_grid_points=.false.
+        logical         ::      if_cube_grid_points=.false.
         real(8)         ::      rtp_SavePlot(3)        
         real(8)         ::      rtp_range_SavePlot(3,2)    
         integer         ::      nrtp_SavePlot(3)          
@@ -36,6 +48,11 @@ module ModParameters
     type(PlotType),&
         allocatable,&
         target          ::      Plots(:)
+    
+    integer             ::      nLogs=0
+    type(LogType),&
+        allocatable,&
+        target          ::      Logs(:)
 
     integer             ::      nSteps                      !   Total n of steps
     real(8)             ::      CFL

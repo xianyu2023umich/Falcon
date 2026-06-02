@@ -11,7 +11,7 @@ module ModEquation
     use ModDivB,        only:   ModDivB_GLM
 
     use ModParameters,  only:   ni,nj,nk,ng,nvar,Artificial_heating_ratio
-    use ModConst,       only:   gamma_ideal_gas
+    use ModConst,       only:   gamma_ideal_gas, dpi
 
     implicit none
 
@@ -92,7 +92,7 @@ module ModEquation
 
 
 
-    ! Lorentz force: ∂v/∂t += (∇×B)×B / ρ0  (i.e. J×B/ρ0 with J = ∇×B)
+    ! Lorentz force: ∂v/∂t += (∇×B)×B / (4π ρ0)   [CGS: J = (c/4π)∇×B, F = J×B/c]
     subroutine ModEquation_Dynamo_Lorentz_Force(Blc1)
         implicit none
         type(BlockType),target      ::  Blc1
@@ -110,7 +110,7 @@ module ModEquation
         
         do ivar=Blc1%vr_,Blc1%vp_
             Blc1%EQN_update_R_IV(:,:,:,ivar)=Blc1%EQN_update_R_IV(:,:,:,ivar)+&
-                tmp(:,:,:,ivar)/Blc1%rho0_III(1:ni,1:nj,1:nk)
+                tmp(:,:,:,ivar)/(4.0d0*dpi*Blc1%rho0_III(1:ni,1:nj,1:nk))
         end do
     end subroutine ModEquation_Dynamo_Lorentz_Force
 
@@ -224,7 +224,7 @@ module ModEquation
         
         do ivar=Blc1%vr_,Blc1%vp_
             Blc1%EQN_update_R_IV(:,:,:,ivar)=Blc1%EQN_update_R_IV(:,:,:,ivar)+&
-                tmp(:,:,:,ivar)/Blc1%primitive(1:ni,1:nj,1:nk,Blc1%rho_)
+                tmp(:,:,:,ivar)/(4.0d0*dpi*Blc1%primitive(1:ni,1:nj,1:nk,Blc1%rho_))
         end do
     end subroutine ModEquation_Corona_Lorentz_Force
 
