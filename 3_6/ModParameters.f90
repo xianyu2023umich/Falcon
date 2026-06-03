@@ -42,7 +42,7 @@ module ModParameters
     integer             ::      ng                          !   Ghost cell grid
     integer             ::      nvar=5                      !   number of variables
 
-    real(8)             ::      Artificial_heating_ratio=1.0
+    real(8)             ::      Artificial_heating_ratio=1.0d0
 
     integer             ::      nPlots=0
     type(PlotType),&
@@ -82,7 +82,7 @@ module ModParameters
         target          ::      AMRs(:)
 
     ! Coronal heating parameters
-    real(8)             ::      LperpSqrtB=1.5e9
+    real(8)             ::      LperpSqrtB=1.5d9
 
     logical             ::      if_involve_B
     character(len=100)  ::      DivB_method                 ! "GLM" or "CT"
@@ -98,4 +98,5 @@ module ModParameters
     character(len=256)  ::      eos_filename
     character(len=256)  ::      entropy_filename
     character(len=256)  ::      opacity_filename
+    real(8)             ::      c_s_target=3.0d5            ! Default is 3e5cm/s=3km/s.
 end module ModParameters

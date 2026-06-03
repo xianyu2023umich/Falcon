@@ -2,7 +2,8 @@ module ModStratification_new
 
     use ModLogicalUnits,only:   iUnit_lookup_table
     use ModParameters,  only:   r_range_Rsun,&
-                                eos_filename,entropy_filename,opacity_filename
+                                eos_filename,entropy_filename,opacity_filename,&
+                                c_s_target
     use ModConst,       only:   dpi,G_CGS,rad_a__CGS,speed_c__CGS,R_sun__CGS
     use ModLookUpTable, only:   LookUpTables,LookUpTable,nLookUpTables,&
                                 ModLookUpTable_Read
@@ -295,7 +296,6 @@ module ModStratification_new
 
     subroutine ModStratification_new_calc_Xi
         implicit none
-        real(8) :: c_sound_r_max_simulation
 
         ! Gamma1 profile using interpolation of EOS table.
         Gamma1_stratification=&
@@ -307,13 +307,9 @@ module ModStratification_new
         ! c_s = sqrt(gamma1 * P / rho)
         c_sound_stratification=sqrt(gamma1_stratification*&
             P_stratification/Rho_stratification)
-
-        ! Get c_sound at r_max_simulation
-        c_sound_r_max_simulation = &
-            ModMath_1D_interpol_0D(c_sound_stratification,&
-            nPoints_stratification,0,r_Rsun_stratification,r_Rsun_max_simulation)
-
-        Xi_stratification=c_sound_stratification/c_sound_r_max_simulation
+        
+        ! Xi is c_s/c_s_target, where c_s_target is the target speed of sound for rsst. 
+        Xi_stratification=c_sound_stratification / c_s_target
     end subroutine ModStratification_new_calc_Xi
 
     subroutine ModStratification_new_calc_gamma3

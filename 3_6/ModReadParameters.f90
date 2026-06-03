@@ -19,7 +19,7 @@ module ModReadParameters
                                     if_do_echo,nStepsEcho,&
                                     if_involve_B,DivB_method,DivB_option,&
                                     eos_filename,entropy_filename,opacity_filename,&
-                                    if_read_ModelS
+                                    if_read_ModelS,c_s_target
     use ModControl,         only:   if_param_file_opened
     use ModLogicalUnits,    only:   iUnit_lookup_table, iUnit_plot_base, iUnit_log_base
     use ModLookUpTable,     only:   ModLookUpTable_Read
@@ -655,6 +655,11 @@ module ModReadParameters
         read(logical_unit, *, iostat=ios) opacity_filename
         if (ios/=0) then
             write(*,*) "Error reading opacity_filename."
+            stop 1
+        end if
+        read(logical_unit, *, iostat=ios) c_s_target
+        if (ios/=0) then
+            write(*,*) "Error reading c_s_target."
             stop 1
         end if
     end subroutine ModReadParameters_read_ModelS
