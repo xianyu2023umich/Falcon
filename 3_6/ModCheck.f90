@@ -77,6 +77,7 @@ module ModCheck
         integer                 ::  iLocalBlock,ir,it,ip
         real(8)                 ::  P_diff_local,P_cool_local
         real(8)                 ::  P_diff_total,P_cool_total
+        real(8)                 ::  scale
         integer                 ::  ierr
 
         P_diff_local = 0.0d0
@@ -94,12 +95,24 @@ module ModCheck
             end do
         end do
 
-        call MPI_Reduce(P_diff_local, P_diff_total, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD, ierr)
-        call MPI_Reduce(P_cool_local, P_cool_total, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD, ierr)
+        ! Allreduce so every rank gets the global totals for the rescaling step.
+        call MPI_Allreduce(P_diff_local, P_diff_total, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD, ierr)
+        call MPI_Allreduce(P_cool_local, P_cool_total, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD, ierr)
 
         if (MpiRank==0) write(*,'(a,es13.5,a,es13.5)') &
             'Diffusion power [erg/s] =', P_diff_total, &
             '   Cooling power [erg/s] =', P_cool_total
+
+        ! Rescale diffusion_I on every rank so total diffusion = |total cooling|.
+        if (abs(P_diff_total) > 0.0d0) then
+            scale = abs(P_cool_total) / P_diff_total
+            do iLocalBlock = 1, Tree%nLocalBlocks
+                Block1 => Tree%LocalBlocks(iLocalBlock)
+                Block1%diffusion_I(:) = Block1%diffusion_I(:) * scale
+            end do
+            if (MpiRank==0) write(*,'(a,es13.5)') &
+                'Rescaled diffusion_I by factor =', scale
+        end if
     end subroutine ModCheck_DiffCool_Power
 
 end module ModCheck
