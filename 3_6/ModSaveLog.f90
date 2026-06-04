@@ -157,7 +157,7 @@ module ModSaveLog
                 select case (Log1%VarName)
                 case ('Le')
                     ! get position index of this r in xi_I
-                    ir_pos_int=int((r-Block1%xi_I(1))/Block1%dxi)+1
+                    ir_pos_int=floor((r-Block1%xi_I(1))/Block1%dxi)+1
 
                     ! weight is the fraction part
                     weight=(r-Block1%xi_I(1))/Block1%dxi+1-ir_pos_int
@@ -212,7 +212,7 @@ module ModSaveLog
                     end do
                 case ('Lk')
                     ! get position index of this r in xi_I
-                    ir_pos_int=int((r-Block1%xi_I(1))/Block1%dxi)+1
+                    ir_pos_int=floor((r-Block1%xi_I(1))/Block1%dxi)+1
 
                     ! weight is the fraction part
                     weight=(r-Block1%xi_I(1))/Block1%dxi+1-ir_pos_int
@@ -248,7 +248,7 @@ module ModSaveLog
                     ! get r, and the position index of this r
                     ! Attention: diffusion are defined at the faces,
                     ! so we need to do interpolation of xi_F.
-                    ir_pos_int=int((r-Block1%xi_F(1))/Block1%dxi)+1
+                    ir_pos_int=floor((r-Block1%xi_F(1))/Block1%dxi)+1
 
                     ! For xi_F position, if it's >= ni+1, then we
                     ! need to minus 1 to forbid out of range.
@@ -278,7 +278,7 @@ module ModSaveLog
                     ! get r, and the position index of this r
                     ! Attention: diffusion are defined at the faces,
                     ! so we need to do interpolation of xi_F.
-                    ir_pos_int=int((r-Block1%xi_F(1))/Block1%dxi)+1
+                    ir_pos_int=floor((r-Block1%xi_F(1))/Block1%dxi)+1
 
                     ! For xi_F position, if it's >= ni+1, then we
                     ! need to minus 1 to forbid out of range.
@@ -305,7 +305,7 @@ module ModSaveLog
                 case('s1')
                     ! This is the average s1 at this r.
                     ! get position index of this r in xi_I
-                    ir_pos_int=int((r-Block1%xi_I(1))/Block1%dxi)+1
+                    ir_pos_int=floor((r-Block1%xi_I(1))/Block1%dxi)+1
 
                     ! weight is the fraction part
                     weight=(r-Block1%xi_I(1))/Block1%dxi+1-ir_pos_int
@@ -336,7 +336,7 @@ module ModSaveLog
                 case('vrms')
                     ! This is the average vrms at this r.
                     ! get position index of this r in xi_I
-                    ir_pos_int=int((r-Block1%xi_I(1))/Block1%dxi)+1
+                    ir_pos_int=floor((r-Block1%xi_I(1))/Block1%dxi)+1
 
                     ! weight is the fraction part
                     weight=(r-Block1%xi_I(1))/Block1%dxi+1-ir_pos_int
