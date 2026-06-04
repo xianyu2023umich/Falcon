@@ -145,6 +145,12 @@ module ModSaveLog
         real(8)                 ::  kinetic_energy,radiative_flux,cooling_flux
         real(8)                 ::  primitive_I(nvar)
 
+        ! Le2 needs p1_III for the whole block — compute once before the r loop.
+        if (trim(adjustl(Log1%VarName))=='Le2') then
+            Block1%primitive => Block1%primitive_IV
+            call ModEquation_Dynamo_Get_p1(Block1)
+        end if
+
         ! Loop each ir to see whether
         ! it is within the block's r range.
         do ir=1,Log1%nr_SaveLog
@@ -184,20 +190,17 @@ module ModSaveLog
                     ! Loop all nj*nk points at this ir.
                     do j=1,nj
                         do k=1,nk
-                            ! First get s1
-                            s1 = &
-                            Block1%primitive_IV(ir_pos_int,j,k,Block1%s1_)&
-                            *(1.0d0-weight)&
-                            +Block1%primitive_IV(ir_pos_int+1,j,k,Block1%s1_)&
-                            *weight
-                            
+                            primitive_I(:) = &
+                                Block1%primitive_IV(ir_pos_int,  j,k,:)*(1.0d0-weight)+&
+                                Block1%primitive_IV(ir_pos_int+1,j,k,:)*weight
+
                             ! enthalpy1 = rho0*T0*s1
-                            enthalpy1 = rho0*T0*s1
-                            
+                            enthalpy1 = rho0*T0*primitive_I(Block1%s1_)
+
                             ! Get the area of this piece at r.
                             dS = r ** 2 * (cos(Block1%xj_F(j))-cos(Block1%xj_F(j+1)))*&
                                 (Block1%xk_F(k+1)-Block1%xk_F(k))
-                            
+
                             ! Add this piece to data.
                             log1%data_SaveLog(ir) = log1%data_SaveLog(ir) &
                                 + enthalpy1 * primitive_I(Block1%vr_)*dS
@@ -218,24 +221,21 @@ module ModSaveLog
                     rho0 = Block1%rho0_I(ir_pos_int)*(1.0d0-weight)+&
                         Block1%rho0_I(ir_pos_int+1)*weight
                     
-                    ! Call calculation of p1
-                    Block1%primitive=>Block1%primitive_IV
-                    call ModEquation_Dynamo_Get_p1(Block1)
-
                     ! Loop all nj*nk points at this ir.
                     do j=1,nj
                         do k=1,nk
-                            ! First get p1
-                            p1 = Block1%p1_III(ir_pos_int,j,k)*(1.0d0-weight)+&
-                                Block1%p1_III(ir_pos_int+1,j,k)*weight
+                            primitive_I(:) = &
+                                Block1%primitive_IV(ir_pos_int,  j,k,:)*(1.0d0-weight)+&
+                                Block1%primitive_IV(ir_pos_int+1,j,k,:)*weight
 
                             ! enthalpy2 = p1
-                            enthalpy2 = p1
-                            
+                            enthalpy2 = Block1%p1_III(ir_pos_int,  j,k)*(1.0d0-weight)+&
+                                        Block1%p1_III(ir_pos_int+1,j,k)*weight
+
                             ! Get the area of this piece at r.
                             dS = r ** 2 * (cos(Block1%xj_F(j))-cos(Block1%xj_F(j+1)))*&
                                 (Block1%xk_F(k+1)-Block1%xk_F(k))
-                            
+
                             ! Add this piece to data.
                             log1%data_SaveLog(ir) = log1%data_SaveLog(ir) &
                                 + enthalpy2 * primitive_I(Block1%vr_)*dS
