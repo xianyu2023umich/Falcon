@@ -144,3 +144,4 @@ test_divB_sph_validate: test_divB_sph_validate.f90
 
 clean:
 	rm -f *.o *.exe *.mod
+	rm -rf *.dSYM

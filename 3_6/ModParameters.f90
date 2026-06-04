@@ -99,4 +99,9 @@ module ModParameters
     character(len=256)  ::      entropy_filename
     character(len=256)  ::      opacity_filename
     real(8)             ::      c_s_target=3.0d5            ! Default is 3e5cm/s=3km/s.
+
+    ! Diffusion
+    logical             ::      if_use_diffusion=.false.
+    real(8)             ::      diffusion_h=2.0d0
+    logical             ::      if_account_diffused_energy=.false.
 end module ModParameters

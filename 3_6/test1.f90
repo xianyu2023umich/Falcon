@@ -5,7 +5,7 @@ program test1
                                     nMaxBlocksPerRank
     use ModParameters,      only:   MpiSize, MpiRank, r_range, nSteps, DoCheck,&
                                     if_do_echo, nStepsEcho, if_check_heating,&
-                                    if_read_ModelS
+                                    if_read_ModelS,if_use_diffusion
     use ModReadParameters,  only:   ModReadParameters_read
     use ModYinYangTree,     only:   YYTree,&
                                     YinYangTree_InitTree,&
@@ -50,8 +50,10 @@ program test1
     end if
 
     ! Allocate diffusion
-    call ModDiffusion_DoAll
-    if (MpiRank==0) print *, 'allocated diffusion'
+    if (if_use_diffusion) then
+        call ModDiffusion_DoAll
+        if (MpiRank==0) print *, 'allocated diffusion'
+    end if
 
     call test1_INITIATION(Tree)
     if (MpiRank==0) print *, 'initialized tree and state'

@@ -140,7 +140,7 @@ module ModSaveLog
         type(LogType),pointer   ::  Log1
         real(8)                 ::  r,weight
         integer                 ::  ir_pos_int,ir,j,k
-        real(8)                 ::  T0,p0,rho0,p1,s1,&
+        real(8)                 ::  T0,p0,rho0,s1,&
                                     enthalpy1,enthalpy2,vrms,dS
         real(8)                 ::  kinetic_energy,radiative_flux,cooling_flux
         real(8)                 ::  primitive_I(nvar)

@@ -93,6 +93,7 @@ module ModBlock
         real(8),allocatable         ::  g_over_rho0_III(:,:,:)
         real(8),allocatable         ::  p0_over_rho0_III(:,:,:)
         real(8),allocatable         ::  rho0T0_III(:,:,:)
+        real(8),allocatable         ::  T0_LLL(:,:,:)        ! background temperature at cell centers
         real(8),allocatable         ::  total_heat_III(:,:,:)
         real(8),allocatable         ::  p1_III(:,:,:)
         real(8),allocatable         ::  Xi_rsst_III(:,:,:)
@@ -228,6 +229,7 @@ module ModBlock
         allocate(Block1%total_heat_III      (-ng+1:ni+ng,-ng+1:nj+ng,-ng+1:nk+ng))
         allocate(Block1%p1_III              (-ng+1:ni+ng,-ng+1:nj+ng,-ng+1:nk+ng))
         allocate(Block1%Xi_rsst_III         (-ng+1:ni+ng,-ng+1:nj+ng,-ng+1:nk+ng))
+        allocate(Block1%T0_LLL              (1:ni       ,1:nj       ,1:nk       ))
 
         ! Allocate wave speed array
         allocate(Block1%v_wave_III          (-ng+1:ni+ng,-ng+1:nj+ng,-ng+1:nk+ng))
@@ -296,6 +298,12 @@ module ModBlock
                 Block1%rho0T0_III(:,j,k)        =Block1%rho0_I*Block1%te0_I
                 Block1%total_heat_III(:,j,k)    =Block1%diffusion_I+Block1%cooling_I
                 Block1%Xi_rsst_III(:,j,k)       =Block1%Xi_rsst_I
+           end do
+        end do
+
+        do j=1,nj
+           do k=1,nk
+                Block1%T0_LLL(:,j,k)=Block1%te0_I(1:ni)
            end do
         end do
 
@@ -551,6 +559,7 @@ module ModBlock
             deallocate(Block1%g_over_rho0_III    )
             deallocate(Block1%p0_over_rho0_III   )
             deallocate(Block1%rho0T0_III         )
+            deallocate(Block1%T0_LLL              )
             deallocate(Block1%total_heat_III     )
             deallocate(Block1%p1_III             )
             deallocate(Block1%Xi_rsst_III        )

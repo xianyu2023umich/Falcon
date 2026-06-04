@@ -59,6 +59,11 @@ F               if_involve_B
 T               if_do_echo
 10              nStepsEcho
 
+#ARTIFICIALDIFFUSION
+T
+2.0d0
+T
+
 #SAVEPLOT
 1               nPlots
 3D              charType

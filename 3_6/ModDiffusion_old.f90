@@ -1,7 +1,8 @@
 module ModDiffusion
 
     use ModBlock,           only:   BlockType
-    use ModParameters,      only:   ni,nj,nk,ng,nvar,iEquation,if_involve_B
+    use ModParameters,      only:   ni,nj,nk,ng,nvar,iEquation,&
+                                    if_involve_B,if_account_diffused_energy,diffusion_h
     use ModLinReconstruct,  only:   ModLinReconstruct_minmod
 
     implicit none
@@ -9,21 +10,22 @@ module ModDiffusion
     private
 
     public :: ModDiffusion_DoAll, &
-              ModDiffusion_Artificial_1
+              ModDiffusion_HyperArtificial
 
     ! The n of vars for diffusion
     integer :: nvar_diffusion
 
     ! Allocate several arrays from the start so no need to allocate/deallocate.
     ! Probably no need for phi.
+    real(8), allocatable                ::  SpecDiffHeat(:,:,:)    
     real(8), allocatable                ::  d_primitive(:,:,:,:)
-    real(8), allocatable                ::  flux_x(:,:,:,:), flux_y(:,:,:,:), flux_z(:,:,:,:)
-    real(8), allocatable                ::  u_r_minus_u_l_x(:,:,:,:),&
-                                            u_i_plus_1_minus_u_i_x(:,:,:,:),&
-                                            u_r_minus_u_l_y(:,:,:,:),&
-                                            u_i_plus_1_minus_u_i_y(:,:,:,:),&
-                                            u_r_minus_u_l_z(:,:,:,:),&
-                                            u_i_plus_1_minus_u_i_z(:,:,:,:)
+    real(8), allocatable                ::  flux_r(:,:,:,:), flux_t(:,:,:,:), flux_p(:,:,:,:)
+    real(8), allocatable                ::  u_r_minus_u_l_r(:,:,:,:),&
+                                            u_i_plus_1_minus_u_i_r(:,:,:,:),&
+                                            u_r_minus_u_l_t(:,:,:,:),&
+                                            u_i_plus_1_minus_u_i_t(:,:,:,:),&
+                                            u_r_minus_u_l_p(:,:,:,:),&
+                                            u_i_plus_1_minus_u_i_p(:,:,:,:)
 
     ! The flag of whether above have been allocated.
     logical :: if_diffusion_allocated = .false.
@@ -46,31 +48,34 @@ module ModDiffusion
 
     subroutine ModDiffusion_Allocate
         allocate(d_primitive(-ng+2:ni+ng-1,-ng+2:nj+ng-1,-ng+2:nk+ng-1,nvar_diffusion))
-        allocate(flux_x(ni+1,nj,nk,nvar_diffusion))
-        allocate(flux_y(ni,nj+1,nk,nvar_diffusion))
-        allocate(flux_z(ni,nj,nk+1,nvar_diffusion))
-        allocate(u_r_minus_u_l_x(ni+1,nj,nk,nvar_diffusion))
-        allocate(u_r_minus_u_l_y(ni,nj+1,nk,nvar_diffusion))
-        allocate(u_r_minus_u_l_z(ni,nj,nk+1,nvar_diffusion))
-        allocate(u_i_plus_1_minus_u_i_x(ni+1,nj,nk,nvar_diffusion))
-        allocate(u_i_plus_1_minus_u_i_y(ni,nj+1,nk,nvar_diffusion))
-        allocate(u_i_plus_1_minus_u_i_z(ni,nj,nk+1,nvar_diffusion))
+        allocate(flux_r(ni+1,nj,nk,nvar_diffusion))
+        allocate(flux_t(ni,nj+1,nk,nvar_diffusion))
+        allocate(flux_p(ni,nj,nk+1,nvar_diffusion))
+        allocate(u_r_minus_u_l_r(ni+1,nj,nk,nvar_diffusion))
+        allocate(u_r_minus_u_l_t(ni,nj+1,nk,nvar_diffusion))
+        allocate(u_r_minus_u_l_p(ni,nj,nk+1,nvar_diffusion))
+        allocate(u_i_plus_1_minus_u_i_r(ni+1,nj,nk,nvar_diffusion))
+        allocate(u_i_plus_1_minus_u_i_t(ni,nj+1,nk,nvar_diffusion))
+        allocate(u_i_plus_1_minus_u_i_p(ni,nj,nk+1,nvar_diffusion))
         if_diffusion_allocated = .true.
+        if (if_account_diffused_energy) then
+            allocate(SpecDiffHeat(1:ni,1:nj,1:nk))
+        end if
     end subroutine ModDiffusion_Allocate
 
     subroutine ModDiffusion_DeAllocate
         deallocate(d_primitive)
-        deallocate(flux_x,flux_y,flux_z)
-        deallocate(u_r_minus_u_l_x,u_i_plus_1_minus_u_i_x)
-        deallocate(u_r_minus_u_l_y,u_i_plus_1_minus_u_i_y)
-        deallocate(u_r_minus_u_l_z,u_i_plus_1_minus_u_i_z)
+        deallocate(flux_r,flux_t,flux_p)
+        deallocate(u_r_minus_u_l_r,u_i_plus_1_minus_u_i_r)
+        deallocate(u_r_minus_u_l_t,u_i_plus_1_minus_u_i_t)
+        deallocate(u_r_minus_u_l_p,u_i_plus_1_minus_u_i_p)
+        if (allocated(SpecDiffHeat)) deallocate(SpecDiffHeat)
         if_diffusion_allocated = .false.
     end subroutine ModDiffusion_DeAllocate
 
-    subroutine ModDiffusion_Artificial_1(Block1,h)
+    subroutine ModDiffusion_HyperArtificial(Block1)
         implicit none
         type(BlockType),target          ::  Block1
-        integer,intent(in)              ::  h
 
         integer                         ::  direction1
         real(8)                         ::  c(-ng+1:ni+ng,-ng+1:nj+ng,-ng+1:nk+ng)
@@ -91,85 +96,130 @@ module ModDiffusion
             select case(direction1)
             case(1)
                 ! First get u differences.
-                u_i_plus_1_minus_u_i_x=Block1%primitive(1:ni+1,1:nj,1:nk,:)-&
+                u_i_plus_1_minus_u_i_r=Block1%primitive(1:ni+1,1:nj,1:nk,:)-&
                     Block1%primitive(0:ni,1:nj,1:nk,:)
                 
-                u_r_minus_u_l_x=u_i_plus_1_minus_u_i_x-0.5*&
+                u_r_minus_u_l_r=u_i_plus_1_minus_u_i_r-0.5*&
                     (d_primitive(1:ni+1,1:nj,1:nk,:)+d_primitive(0:ni,1:nj,1:nk,:))
 
-                flux_x=max(0.0,1.0+h*(u_r_minus_u_l_x/u_i_plus_1_minus_u_i_x-1))
+                flux_r=max(0.0,1.0+diffusion_h*(u_r_minus_u_l_r/u_i_plus_1_minus_u_i_r-1))
                 
                 ! then get the flux.
                 ! f_{i+1/2}=-0.5 * c_{i+1/2}*phi*(u_r-u_l)
-                flux_x=-0.5*flux_x*u_r_minus_u_l_x
+                flux_r=-0.5*flux_r*u_r_minus_u_l_r
                 
                 ! multiply flux by c_{i+1/2}
                 do ivar=1,nvar_diffusion
-                    flux_x(:,:,:,ivar)=flux_x(:,:,:,ivar)*(c(1:ni+1,:,:)+c(0:ni,:,:))*0.5
+                    flux_r(:,:,:,ivar)=flux_r(:,:,:,ivar)*(c(1:ni+1,:,:)+c(0:ni,:,:))*0.5
 
                     ! face area
-                    flux_x(:,:,:,ivar)=flux_x(:,:,:,ivar)*Block1%Si_FLL
+                    flux_r(:,:,:,ivar)=flux_r(:,:,:,ivar)*Block1%Si_FLL
                 end do
 
                 ! update EQN_update_R
                 do ivar=1,nvar_diffusion
                     Block1%EQN_update_R_IV(:,:,:,ivar)=Block1%EQN_update_R_IV(:,:,:,ivar)+&
-                        (flux_x(1:ni,:,:,ivar)-flux_x(2:ni+1,:,:,ivar))/Block1%V_LLL
+                        (flux_r(1:ni,:,:,ivar)-flux_r(2:ni+1,:,:,ivar))/Block1%V_LLL
                 end do
             case(2)
                 ! First get u differences.
-                u_i_plus_1_minus_u_i_y=Block1%primitive(1:ni,1:nj+1,1:nk,:)-&
+                u_i_plus_1_minus_u_i_t=Block1%primitive(1:ni,1:nj+1,1:nk,:)-&
                     Block1%primitive(1:ni,0:nj,1:nk,:)
                 
-                u_r_minus_u_l_y=u_i_plus_1_minus_u_i_y-0.5*&
+                u_r_minus_u_l_t=u_i_plus_1_minus_u_i_t-0.5*&
                     (d_primitive(1:ni,1:nj+1,1:nk,:)+d_primitive(1:ni,0:nj,1:nk,:))
 
-                flux_y=max(0.0,1.0+h*(u_r_minus_u_l_y/u_i_plus_1_minus_u_i_y-1))
+                flux_t=max(0.0,1.0+diffusion_h*(u_r_minus_u_l_t/u_i_plus_1_minus_u_i_t-1))
                 
                 ! then get the flux.
                 ! f_{i+1/2}=-0.5 * c_{i+1/2}*phi*(u_r-u_l)
-                flux_y=-0.5*flux_y*u_r_minus_u_l_y
+                flux_t=-0.5*flux_t*u_r_minus_u_l_t
 
                 ! multiply flux by c_{i+1/2} and face area
                 do ivar=1,nvar_diffusion
-                    flux_y(:,:,:,ivar)=flux_y(:,:,:,ivar)*(c(:,1:nj+1,:)+c(:,0:nj,:))*0.5
+                    flux_t(:,:,:,ivar)=flux_t(:,:,:,ivar)*(c(:,1:nj+1,:)+c(:,0:nj,:))*0.5
 
                     ! face area
-                    flux_y(:,:,:,ivar)=flux_y(:,:,:,ivar)*Block1%Sj_LFL
+                    flux_t(:,:,:,ivar)=flux_t(:,:,:,ivar)*Block1%Sj_LFL
                 end do
 
                 do ivar=1,nvar_diffusion
                     Block1%EQN_update_R_IV(:,:,:,ivar)=Block1%EQN_update_R_IV(:,:,:,ivar)+&
-                            (flux_y(:,1:nj,:,ivar)-flux_y(:,2:nj+1,:,ivar))/Block1%V_LLL
+                            (flux_t(:,1:nj,:,ivar)-flux_t(:,2:nj+1,:,ivar))/Block1%V_LLL
                 end do
             case(3)
                 ! First get u differences.
-                u_i_plus_1_minus_u_i_z=Block1%primitive(1:ni,1:nj,1:nk+1,:)-&
+                u_i_plus_1_minus_u_i_p=Block1%primitive(1:ni,1:nj,1:nk+1,:)-&
                     Block1%primitive(1:ni,1:nj,0:nk,:)
                 
-                u_r_minus_u_l_z=u_i_plus_1_minus_u_i_z-0.5*&
+                u_r_minus_u_l_p=u_i_plus_1_minus_u_i_p-0.5*&
                     (d_primitive(1:ni,1:nj,1:nk+1,:)+d_primitive(1:ni,1:nj,0:nk,:))
 
-                flux_z=max(0.0,1.0+h*(u_r_minus_u_l_z/u_i_plus_1_minus_u_i_z-1))
+                flux_p=max(0.0,1.0+diffusion_h*(u_r_minus_u_l_p/u_i_plus_1_minus_u_i_p-1))
                 
                 ! then get the flux.
                 ! f_{i+1/2}=-0.5 * c_{i+1/2}*phi*(u_r-u_l)
-                flux_z=-0.5*flux_z*u_r_minus_u_l_z
+                flux_p=-0.5*flux_p*u_r_minus_u_l_p
                 
                 ! multiply flux by c_{i+1/2}
                 do ivar=1,nvar_diffusion
-                    flux_z(:,:,:,ivar)=flux_z(:,:,:,ivar)*(c(:,:,1:nk+1)+c(:,:,0:nk))*0.5
+                    flux_p(:,:,:,ivar)=flux_p(:,:,:,ivar)*(c(:,:,1:nk+1)+c(:,:,0:nk))*0.5
 
                     ! face area
-                    flux_z(:,:,:,ivar)=flux_z(:,:,:,ivar)*Block1%Sk_LLF
+                    flux_p(:,:,:,ivar)=flux_p(:,:,:,ivar)*Block1%Sk_LLF
                 end do
 
                 do ivar=1,nvar_diffusion
                     Block1%EQN_update_R_IV(:,:,:,ivar)=Block1%EQN_update_R_IV(:,:,:,ivar)+&
-                        (flux_z(:,:,1:nk,ivar)-flux_z(:,:,2:nk+1,ivar))/Block1%V_LLL
+                        (flux_p(:,:,1:nk,ivar)-flux_p(:,:,2:nk+1,ivar))/Block1%V_LLL
                 end do
             end select
         end do
-    end subroutine ModDiffusion_Artificial_1
+
+        if (if_account_diffused_energy) then
+            call ModDiffusion_AccountDiffusedEnergy(Block1)
+        end if
+    end subroutine ModDiffusion_HyperArtificial
+
+    ! The artificial diffusoin dissipates energy.
+    ! This subroutine estimate this dissipated energy and
+    ! account it as a heating, thus appears in the perturbed
+    ! entropy equation.
+    !
+    ! For a velocity flux f_i (i for direction), the
+    ! kinetic energy change is f_i*(u_r-u_l)*rho0. We should
+    ! minus this change in the entropy equation, which appears as
+    ! -f_i*(u_r-u_l)*rho0/(rho0*T0)=-f_i*(u_r-u_l)/T0.
+    !
+    ! Also we need to partition this energy into two cells at two
+    ! sides of the face, so there's a 0.5. Also divide the volume.
+    ! So the final formula is -0.5*f_i*(u_r-u_l)/(T0*V_LLL).
+    subroutine ModDiffusion_AccountDiffusedEnergy(Block1)
+        implicit none
+        type(BlockType),target          ::  Block1
+
+        ! The left face of all cells is from 1 to ni.
+        ! The right is from 2 to ni+1.
+
+        SpecDiffHeat=0.d0
+
+        SpecDiffHeat=SpecDiffHeat-flux_r(1:ni,:,:,Block1%vr_)*&
+            (u_r_minus_u_l_r(1:ni,:,:,Block1%vr_))
+        SpecDiffHeat=SpecDiffHeat-flux_r(2:ni+1,:,:,Block1%vr_)*&
+            (u_r_minus_u_l_r(2:ni+1,:,:,Block1%vr_))
+        SpecDiffHeat=SpecDiffHeat-flux_t(:,1:nj,:,Block1%vr_)*&
+            (u_r_minus_u_l_t(:,1:nj,:,Block1%vr_))
+        SpecDiffHeat=SpecDiffHeat-flux_t(:,2:nj+1,:,Block1%vr_)*&
+            (u_r_minus_u_l_t(:,2:nj+1,:,Block1%vr_))
+        SpecDiffHeat=SpecDiffHeat-flux_p(:,:,1:nk,Block1%vr_)*&
+            (u_r_minus_u_l_p(:,:,1:nk,Block1%vr_))
+        SpecDiffHeat=SpecDiffHeat-flux_p(:,:,2:nk+1,Block1%vr_)*&
+            (u_r_minus_u_l_p(:,:,2:nk+1,Block1%vr_))
+
+        SpecDiffHeat=SpecDiffHeat*0.5d0
+        Block1%EQN_update_R_IV(:,:,:,Block1%s1_)=&
+            Block1%EQN_update_R_IV(:,:,:,Block1%s1_)+&
+            SpecDiffHeat/(Block1%T0_LLL*Block1%V_LLL)
+    end subroutine  ModDiffusion_AccountDiffusedEnergy
 
 end module ModDiffusion

@@ -1,31 +1,15 @@
 module ModReadParameters
 
     use ModConst,           only:   R_sun__CGS
-    use ModParameters,      only:   mpirank,&
-                                    r_range,r_range_Rsun,&
-                                    ni,nj,nk,ng,nvar,&
-                                    Artificial_heating_ratio,&
-                                    nSteps,&
-                                    CFL,&
-                                    NameEquation,iEquation,&
-                                    Initiation_type,Initiation_type_index,randVelocity_rms,&
-                                    InitiationB_type,InitiationB_type_index,Bphi_uniform,&
-                                    iGeometry,&
-                                    DoCheck,if_check_heating,&
-                                    Plots,nPlots,PlotType,&
-                                    Logs,nLogs,LogType,&
-                                    rLevelInitial,rLevelOption,&
-                                    nAMRs,AMRs,AMRType,&
-                                    if_do_echo,nStepsEcho,&
-                                    if_involve_B,DivB_method,DivB_option,&
-                                    eos_filename,entropy_filename,opacity_filename,&
-                                    if_read_ModelS,c_s_target
     use ModControl,         only:   if_param_file_opened
     use ModLogicalUnits,    only:   iUnit_lookup_table, iUnit_plot_base, iUnit_log_base
     use ModLookUpTable,     only:   ModLookUpTable_Read
     use ModEOS,             only:   ModEOS_init
     use ModOpacity,         only:   ModOpacity_init
     use ModStratification_new, only: ModStratification_new_Init
+
+    ! Use everything from ModParameters since we will be reading many parameters.
+    use ModParameters
 
     contains
 
@@ -217,6 +201,9 @@ module ModReadParameters
                     if_close = .false.
                     exit
 
+                case("#ARTIFICIALDIFFUSION")
+                    call ModReadParameters_ArtificialDiffusion(logical_unit)
+
                 case default
                     write(*,*) "Error from ",name_sub,": Unknown command: ",trim(adjustl(line))
                     stop 1
@@ -237,6 +224,31 @@ module ModReadParameters
             if_param_file_opened = .False.
         end if
     end subroutine ModReadParameters_read
+
+    subroutine ModReadParameters_ArtificialDiffusion(logical_unit)
+        implicit none
+        character(len=37)               ::  name_sub='ModReadParameters_ArtificialDiffusion'
+        integer,intent(in)              ::  logical_unit
+        integer                         ::  ios
+
+        read(logical_unit, *, iostat=ios) if_use_diffusion
+        if (ios/=0) then
+            write(*,*) "Error from ",name_sub,": Error reading if_use_diffusion"
+            stop 1
+        end if
+        if (if_use_diffusion) then
+            read(logical_unit, *, iostat=ios) diffusion_h
+            if (ios/=0) then
+                write(*,*) "Error from ",name_sub,": Error reading diffusion_h"
+                stop 1
+            end if
+            read(logical_unit, *, iostat=ios) if_account_diffused_energy
+            if (ios/=0) then
+                write(*,*) "Error from ",name_sub,": Error reading if_account_diffused_energy"
+                stop 1
+            end if
+        end if
+    end subroutine ModReadParameters_ArtificialDiffusion
 
     subroutine ModReadParameters_read_rLevel(logical_unit)
         implicit none

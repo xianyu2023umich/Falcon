@@ -3,11 +3,12 @@ module ModAdvance
     use ModBlock,           only:   BlockType
     use ModYinYangTree,     only:   YYTree
     use ModEquation,        only:   ModEquation_Dynamo
-    use ModDiffusion,       only:   ModDiffusion_Artificial_1
+    use ModDiffusion,       only:   ModDiffusion_HyperArtificial
     use ModTimeStep,        only:   ModTimeStep_Dynamo
     use ModWaveSpeed,       only:   ModWaveSpeed_Dynamo
     use ModCommunication,   only:   ModCommunication_SendRecvGC,ModCommunication_SendRecvGC_new
-    use ModParameters,      only:   ni,nj,nk,nvar,MpiRank,iEquation,CFL,DivB_option
+    use ModParameters,      only:   ni,nj,nk,nvar,MpiRank,iEquation,CFL,&
+                                    DivB_option,if_use_diffusion
     use ModCheck,           only:   ModCheck_primitive
     use ModBoundary,        only:   ModBoundary_Dynamo_primitives
     use ModDivB,            only:   ModDivB_GLM
@@ -97,19 +98,23 @@ module ModAdvance
             end do
 
             ! Do the artificial diffusion after the rk loop
+            if (if_use_diffusion) then
+                do iLocalBlock=1,size(Tree%LocalBlocks)
+                    Block1=>Tree%LocalBlocks(iLocalBlock)
 
-            do iLocalBlock=1,size(Tree%LocalBlocks)
-               Block1=>Tree%LocalBlocks(iLocalBlock)
+                    ! Preparations
+                    Block1%EQN_update_R_IV=0.0
 
-               ! Preparations
-               Block1%EQN_update_R_IV=0.0
+                    ! Call diffusion.
+                    call ModDiffusion_HyperArtificial(Block1)
+                    Block1%primitive_IV(1:ni,1:nj,1:nk,:)=      &
+                        Block1%primitive_IV(1:ni,1:nj,1:nk,:)   &
+                        +dt_global*Block1%EQN_update_R_IV
+                end do
+                call ModCommunication_SendRecvGC_new(Tree,.false.)
+            end if
 
-               ! Call diffusion.
-               call ModDiffusion_Artificial_1(Block1,2)
-               Block1%primitive_IV(1:ni,1:nj,1:nk,:)=&
-                   Block1%primitive_IV(1:ni,1:nj,1:nk,:)+0.5*dt_global*Block1%EQN_update_R_IV
-            end do
-            call ModCommunication_SendRecvGC_new(Tree,.false.)
+            
         else
         end if
     end subroutine ModAdvance_rk4
