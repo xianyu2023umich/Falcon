@@ -140,7 +140,8 @@ module ModSaveLog
         type(LogType),pointer   ::  Log1
         real(8)                 ::  r,weight
         integer                 ::  ir_pos_int,ir,j,k
-        real(8)                 ::  T0,p0,rho0,e1,p1,enthapy,s1,vrms,dS
+        real(8)                 ::  T0,p0,rho0,p1,s1,&
+                                    enthalpy1,enthalpy2,vrms,dS
         real(8)                 ::  kinetic_energy,radiative_flux,cooling_flux
         real(8)                 ::  primitive_I(nvar)
 
@@ -155,21 +156,61 @@ module ModSaveLog
 
                 ! Select which to calculate
                 select case (Log1%VarName)
-                case ('Le')
+                ! Perturbed enthalpy flux
+                ! = \int (rho0 * e1 + p1 - p0 * rho1/rho0) v_r dS
+                ! Which means we need e1.
+                ! Since de=T ds - p d(1/rho)
+                ! = T ds + p/rho^2 drho, we have e1=T s1 + p/rho^2 rho1
+                ! The coefficients T and p/rho^2 can be estimated by
+                ! background values at this r.
+                ! I split the total enthalpy into two terms:
+                ! ent=rho0 * e1 + p1 - p0 * rho1/rho0
+                !    =rho0*T0*s1 + p0 * rho1/rho0 + p1 - p0 * rho1/rho0
+                !    =rho0*T0*s1 + p1
+                ! Here rho0*T0*s1 defines L1, and p1 defines L2.
+                case ('Le1')
                     ! get position index of this r in xi_I
                     ir_pos_int=floor((r-Block1%xi_I(1))/Block1%dxi)+1
 
                     ! weight is the fraction part
                     weight=(r-Block1%xi_I(1))/Block1%dxi+1-ir_pos_int
 
-                    ! Perturbed enthalpy flux
-                    ! = \int (rho0 * e1 + p1 - p0 * rho1/rho0) v_r dS
-                    ! Which means we need e1.
-                    ! Since de=T ds - p d(1/rho)
-                    ! = T ds + p/rho^2 drho, we have e1=T s1 + p/rho^2 rho1
-                    ! The coefficients T and p/rho^2 can be estimated by
-                    ! background values at this r.
+                    ! Background vars
+                    T0 = Block1%te0_I(ir_pos_int)*(1.0d0-weight)+&
+                        Block1%te0_I(ir_pos_int+1)*weight
+                    rho0 = Block1%rho0_I(ir_pos_int)*(1.0d0-weight)+&
+                        Block1%rho0_I(ir_pos_int+1)*weight
 
+                    ! Loop all nj*nk points at this ir.
+                    do j=1,nj
+                        do k=1,nk
+                            ! First get s1
+                            s1 = &
+                            Block1%primitive_IV(ir_pos_int,j,k,Block1%s1_)&
+                            *(1.0d0-weight)&
+                            +Block1%primitive_IV(ir_pos_int+1,j,k,Block1%s1_)&
+                            *weight
+                            
+                            ! enthalpy1 = rho0*T0*s1
+                            enthalpy1 = rho0*T0*s1
+                            
+                            ! Get the area of this piece at r.
+                            dS = r ** 2 * (cos(Block1%xj_F(j))-cos(Block1%xj_F(j+1)))*&
+                                (Block1%xk_F(k+1)-Block1%xk_F(k))
+                            
+                            ! Add this piece to data.
+                            log1%data_SaveLog(ir) = log1%data_SaveLog(ir) &
+                                + enthalpy1 * primitive_I(Block1%vr_)*dS
+                        end do
+                    end do
+                case ('Le2')
+                    ! get position index of this r in xi_I
+                    ir_pos_int=floor((r-Block1%xi_I(1))/Block1%dxi)+1
+
+                    ! weight is the fraction part
+                    weight=(r-Block1%xi_I(1))/Block1%dxi+1-ir_pos_int
+
+                    ! Background vars
                     T0 = Block1%te0_I(ir_pos_int)*(1.0d0-weight)+&
                         Block1%te0_I(ir_pos_int+1)*weight
                     p0 = Block1%p0_I(ir_pos_int)*(1.0d0-weight)+&
@@ -184,22 +225,12 @@ module ModSaveLog
                     ! Loop all nj*nk points at this ir.
                     do j=1,nj
                         do k=1,nk
-                            ! get primitive variables at this point by interpolation in r.
-                            primitive_I(:) = &
-                                Block1%primitive_IV(ir_pos_int,j,k,:)*(1.0d0-weight)+&
-                                Block1%primitive_IV(ir_pos_int+1,j,k,:)*weight
-
-                            ! e1=T s1 + p/rho^2 rho1
-                            e1 =  T0*primitive_I(Block1%s1_)   &
-                                + p0/rho0**2              &
-                                * primitive_I(Block1%rho1_)
-
+                            ! First get p1
                             p1 = Block1%p1_III(ir_pos_int,j,k)*(1.0d0-weight)+&
                                 Block1%p1_III(ir_pos_int+1,j,k)*weight
-                            
-                            ! enthalpy = rho0 * e1 + p1 - p0 * rho1/rho0
-                            enthapy = rho0 * e1 + p1  &
-                                - p0 * primitive_I(Block1%rho1_)/rho0
+
+                            ! enthalpy2 = p1
+                            enthalpy2 = p1
                             
                             ! Get the area of this piece at r.
                             dS = r ** 2 * (cos(Block1%xj_F(j))-cos(Block1%xj_F(j+1)))*&
@@ -207,7 +238,7 @@ module ModSaveLog
                             
                             ! Add this piece to data.
                             log1%data_SaveLog(ir) = log1%data_SaveLog(ir) &
-                                + enthapy * primitive_I(Block1%vr_)*dS
+                                + enthalpy2 * primitive_I(Block1%vr_)*dS
                         end do
                     end do
                 case ('Lk')
