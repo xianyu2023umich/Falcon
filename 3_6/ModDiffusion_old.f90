@@ -1,33 +1,80 @@
 module ModDiffusion
 
     use ModBlock,           only:   BlockType
-    use ModParameters,      only:   ni,nj,nk,ng,nvar,iEquation
+    use ModParameters,      only:   ni,nj,nk,ng,nvar,iEquation,if_involve_B
     use ModLinReconstruct,  only:   ModLinReconstruct_minmod
 
+    implicit none
+
+    private
+
+    public :: ModDiffusion_DoAll, &
+              ModDiffusion_Artificial_1
+
+    ! The n of vars for diffusion
+    integer :: nvar_diffusion
+
+    ! Allocate several arrays from the start so no need to allocate/deallocate.
+    ! Probably no need for phi.
+    real(8), allocatable                ::  d_primitive(:,:,:,:)
+    real(8), allocatable                ::  flux_x(:,:,:,:), flux_y(:,:,:,:), flux_z(:,:,:,:)
+    real(8), allocatable                ::  u_r_minus_u_l_x(:,:,:,:),&
+                                            u_i_plus_1_minus_u_i_x(:,:,:,:),&
+                                            u_r_minus_u_l_y(:,:,:,:),&
+                                            u_i_plus_1_minus_u_i_y(:,:,:,:),&
+                                            u_r_minus_u_l_z(:,:,:,:),&
+                                            u_i_plus_1_minus_u_i_z(:,:,:,:)
+
+    ! The flag of whether above have been allocated.
+    logical :: if_diffusion_allocated = .false.
+
     contains
+
+    subroutine ModDiffusion_DoAll
+        ! Get the n of var here
+        if (iEquation == 1 .and. .not. if_involve_B) then
+            nvar_diffusion = nvar - 4
+        else
+            nvar_diffusion = nvar
+        end if
+
+        ! Deallocate if already allocated, then allocate.
+        ! This is to make sure if there's a change in nvar_diffusion.
+        if (if_diffusion_allocated) call ModDiffusion_DeAllocate
+        call ModDiffusion_Allocate
+    end subroutine ModDiffusion_DoAll
+
+    subroutine ModDiffusion_Allocate
+        allocate(d_primitive(-ng+2:ni+ng-1,-ng+2:nj+ng-1,-ng+2:nk+ng-1,nvar_diffusion))
+        allocate(flux_x(ni+1,nj,nk,nvar_diffusion))
+        allocate(flux_y(ni,nj+1,nk,nvar_diffusion))
+        allocate(flux_z(ni,nj,nk+1,nvar_diffusion))
+        allocate(u_r_minus_u_l_x(ni+1,nj,nk,nvar_diffusion))
+        allocate(u_r_minus_u_l_y(ni,nj+1,nk,nvar_diffusion))
+        allocate(u_r_minus_u_l_z(ni,nj,nk+1,nvar_diffusion))
+        allocate(u_i_plus_1_minus_u_i_x(ni+1,nj,nk,nvar_diffusion))
+        allocate(u_i_plus_1_minus_u_i_y(ni,nj+1,nk,nvar_diffusion))
+        allocate(u_i_plus_1_minus_u_i_z(ni,nj,nk+1,nvar_diffusion))
+        if_diffusion_allocated = .true.
+    end subroutine ModDiffusion_Allocate
+
+    subroutine ModDiffusion_DeAllocate
+        deallocate(d_primitive)
+        deallocate(flux_x,flux_y,flux_z)
+        deallocate(u_r_minus_u_l_x,u_i_plus_1_minus_u_i_x)
+        deallocate(u_r_minus_u_l_y,u_i_plus_1_minus_u_i_y)
+        deallocate(u_r_minus_u_l_z,u_i_plus_1_minus_u_i_z)
+        if_diffusion_allocated = .false.
+    end subroutine ModDiffusion_DeAllocate
 
     subroutine ModDiffusion_Artificial_1(Block1,h)
         implicit none
         type(BlockType),target          ::  Block1
         integer,intent(in)              ::  h
 
-        integer                         ::  direction1,nvar_here
+        integer                         ::  direction1
         real(8)                         ::  c(-ng+1:ni+ng,-ng+1:nj+ng,-ng+1:nk+ng)
-        real(8),allocatable             ::  d_primitive(:,:,:,:)
-        real(8),allocatable             ::  flux(:,:,:,:),&
-                                            phi(:,:,:,:),&
-                                            u_r_minus_u_l(:,:,:,:),&
-                                            u_i_plus_1_minus_u_i(:,:,:,:)
-        integer                         ::  i,j,ivar
-
-        ! Get the n of var here
-        if (iEquation == 1 .and. .not. Block1%if_involve_B) then
-            nvar_here = nvar - 4
-        else
-            nvar_here = nvar
-        end if
-
-        allocate(d_primitive(-ng+2:ni+ng-1,-ng+2:nj+ng-1,-ng+2:nk+ng-1,nvar_here))
+        integer                         ::  ivar
 
         ! Get the primitive pointer
         Block1%primitive=>Block1%primitive_IV
@@ -38,124 +85,90 @@ module ModDiffusion
             c=abs(Block1%primitive(:,:,:,direction1+1))+Block1%v_sound_III
 
             ! use minmod to find \Delta u
-            call ModLinReconstruct_minmod(nvar_here,ni,nj,nk,ng,direction1,Block1%primitive,d_primitive)
+            call ModLinReconstruct_minmod(nvar_diffusion,ni,nj,nk,ng,direction1,Block1%primitive,d_primitive)
 
             ! get phi & flux
             select case(direction1)
             case(1)
-                allocate(flux(ni+1,nj,nk,nvar_here),phi(ni+1,nj,nk,nvar_here))
-                allocate(u_r_minus_u_l(ni+1,nj,nk,nvar_here),u_i_plus_1_minus_u_i(ni+1,nj,nk,nvar_here))
-
-                ! first get \Phi_{h}
-                ! phi = max[0, 1+((u_r-u_l)/(u_i+1-u_i)-1)],
-                ! for the i+1/2 face.
-
-                u_i_plus_1_minus_u_i=Block1%primitive(1:ni+1,1:nj,1:nk,:)-&
+                ! First get u differences.
+                u_i_plus_1_minus_u_i_x=Block1%primitive(1:ni+1,1:nj,1:nk,:)-&
                     Block1%primitive(0:ni,1:nj,1:nk,:)
                 
-                u_r_minus_u_l=u_i_plus_1_minus_u_i-0.5*&
+                u_r_minus_u_l_x=u_i_plus_1_minus_u_i_x-0.5*&
                     (d_primitive(1:ni+1,1:nj,1:nk,:)+d_primitive(0:ni,1:nj,1:nk,:))
 
-                phi=max(0.0,1.0+h*(u_r_minus_u_l/u_i_plus_1_minus_u_i-1))
+                flux_x=max(0.0,1.0+h*(u_r_minus_u_l_x/u_i_plus_1_minus_u_i_x-1))
                 
                 ! then get the flux.
                 ! f_{i+1/2}=-0.5 * c_{i+1/2}*phi*(u_r-u_l)
-                flux=-0.5*phi*u_r_minus_u_l
+                flux_x=-0.5*flux_x*u_r_minus_u_l_x
                 
                 ! multiply flux by c_{i+1/2}
-                do ivar=1,nvar_here
-                    flux(:,:,:,ivar)=flux(:,:,:,ivar)*(c(1:ni+1,:,:)+c(0:ni,:,:))*0.5
-                end do
+                do ivar=1,nvar_diffusion
+                    flux_x(:,:,:,ivar)=flux_x(:,:,:,ivar)*(c(1:ni+1,:,:)+c(0:ni,:,:))*0.5
 
-                !do ivar=vr_,vp_
-                !    flux(:,:,:,ivar)=flux(:,:,:,ivar)+&
-                !        (Block1%primitive(1:ni+1,:,:,ivar)+Block1%primitive(0:ni,:,:,ivar))*&
-                !        0.5*flux(:,:,:,rho1_)
-                !end do
+                    ! face area
+                    flux_x(:,:,:,ivar)=flux_x(:,:,:,ivar)*Block1%Si_FLL
+                end do
 
                 ! update EQN_update_R
-                do ivar=1,nvar_here
+                do ivar=1,nvar_diffusion
                     Block1%EQN_update_R_IV(:,:,:,ivar)=Block1%EQN_update_R_IV(:,:,:,ivar)+&
-                        (flux(1:ni,:,:,ivar)-flux(2:ni+1,:,:,ivar))/Block1%dxi
+                        (flux_x(1:ni,:,:,ivar)-flux_x(2:ni+1,:,:,ivar))/Block1%V_LLL
                 end do
             case(2)
-                allocate(flux(ni,nj+1,nk,nvar_here),phi(ni,nj+1,nk,nvar_here))
-                allocate(u_r_minus_u_l(ni,nj+1,nk,nvar_here),u_i_plus_1_minus_u_i(ni,nj+1,nk,nvar_here))
-
-                ! first get \Phi_{h}
-                ! phi = max[0, 1+((u_r-u_l)/(u_i+1-u_i)-1)],
-                ! for the i+1/2 face.
-
-                u_i_plus_1_minus_u_i=Block1%primitive(1:ni,1:nj+1,1:nk,:)-&
+                ! First get u differences.
+                u_i_plus_1_minus_u_i_y=Block1%primitive(1:ni,1:nj+1,1:nk,:)-&
                     Block1%primitive(1:ni,0:nj,1:nk,:)
                 
-                u_r_minus_u_l=u_i_plus_1_minus_u_i-0.5*&
+                u_r_minus_u_l_y=u_i_plus_1_minus_u_i_y-0.5*&
                     (d_primitive(1:ni,1:nj+1,1:nk,:)+d_primitive(1:ni,0:nj,1:nk,:))
 
-                phi=max(0.0,1.0+h*(u_r_minus_u_l/u_i_plus_1_minus_u_i-1))
+                flux_y=max(0.0,1.0+h*(u_r_minus_u_l_y/u_i_plus_1_minus_u_i_y-1))
                 
                 ! then get the flux.
                 ! f_{i+1/2}=-0.5 * c_{i+1/2}*phi*(u_r-u_l)
-                flux=-0.5*phi*u_r_minus_u_l
+                flux_y=-0.5*flux_y*u_r_minus_u_l_y
 
-                ! multiply flux by c_{i+1/2}
-                do ivar=1,nvar_here
-                    flux(:,:,:,ivar)=flux(:,:,:,ivar)*(c(:,1:nj+1,:)+c(:,0:nj,:))*0.5
+                ! multiply flux by c_{i+1/2} and face area
+                do ivar=1,nvar_diffusion
+                    flux_y(:,:,:,ivar)=flux_y(:,:,:,ivar)*(c(:,1:nj+1,:)+c(:,0:nj,:))*0.5
+
+                    ! face area
+                    flux_y(:,:,:,ivar)=flux_y(:,:,:,ivar)*Block1%Sj_LFL
                 end do
 
-                !do ivar=vr_,vp_
-                !    flux(:,:,:,ivar)=flux(:,:,:,ivar)+&
-                !        (Block1%primitive(:,1:nj+1,:,ivar)+Block1%primitive(:,0:nj,:,ivar))*&
-                !        0.5*flux(:,:,:,rho1_)
-                !end do
-
-                do ivar=1,nvar_here
-                    do i=1,ni
-                        Block1%EQN_update_R_IV(i,:,:,ivar)=Block1%EQN_update_R_IV(i,:,:,ivar)+&
-                            (flux(i,1:nj,:,ivar)-flux(i,2:nj+1,:,ivar))/(Block1%dxj*Block1%xi_I(i))
-                    end do
+                do ivar=1,nvar_diffusion
+                    Block1%EQN_update_R_IV(:,:,:,ivar)=Block1%EQN_update_R_IV(:,:,:,ivar)+&
+                            (flux_y(:,1:nj,:,ivar)-flux_y(:,2:nj+1,:,ivar))/Block1%V_LLL
                 end do
             case(3)
-                allocate(flux(ni,nj,nk+1,nvar_here),phi(ni,nj,nk+1,nvar_here))
-                allocate(u_r_minus_u_l(ni,nj,nk+1,nvar_here),u_i_plus_1_minus_u_i(ni,nj,nk+1,nvar_here))
-
-                ! first get \Phi_{h}
-                ! phi = max[0, 1+((u_r-u_l)/(u_i+1-u_i)-1)],
-                ! for the i+1/2 face.
-
-                u_i_plus_1_minus_u_i=Block1%primitive(1:ni,1:nj,1:nk+1,:)-&
+                ! First get u differences.
+                u_i_plus_1_minus_u_i_z=Block1%primitive(1:ni,1:nj,1:nk+1,:)-&
                     Block1%primitive(1:ni,1:nj,0:nk,:)
                 
-                u_r_minus_u_l=u_i_plus_1_minus_u_i-0.5*&
+                u_r_minus_u_l_z=u_i_plus_1_minus_u_i_z-0.5*&
                     (d_primitive(1:ni,1:nj,1:nk+1,:)+d_primitive(1:ni,1:nj,0:nk,:))
 
-                phi=max(0.0,1.0+h*(u_r_minus_u_l/u_i_plus_1_minus_u_i-1))
+                flux_z=max(0.0,1.0+h*(u_r_minus_u_l_z/u_i_plus_1_minus_u_i_z-1))
                 
                 ! then get the flux.
                 ! f_{i+1/2}=-0.5 * c_{i+1/2}*phi*(u_r-u_l)
-                flux=-0.5*phi*u_r_minus_u_l
+                flux_z=-0.5*flux_z*u_r_minus_u_l_z
                 
                 ! multiply flux by c_{i+1/2}
-                do ivar=1,nvar_here
-                    flux(:,:,:,ivar)=flux(:,:,:,ivar)*(c(:,:,1:nk+1)+c(:,:,0:nk))*0.5
+                do ivar=1,nvar_diffusion
+                    flux_z(:,:,:,ivar)=flux_z(:,:,:,ivar)*(c(:,:,1:nk+1)+c(:,:,0:nk))*0.5
+
+                    ! face area
+                    flux_z(:,:,:,ivar)=flux_z(:,:,:,ivar)*Block1%Sk_LLF
                 end do
 
-                !do ivar=vr_,vp_
-                !    flux(:,:,:,ivar)=flux(:,:,:,ivar)+&
-                !        (Block1%primitive(:,:,1:nk+1,ivar)+Block1%primitive(:,:,0:nk,ivar))*&
-                !        0.5*flux(:,:,:,rho1_)
-                !end do
-
-                do ivar=1,nvar_here
-                    do j=1,nj
-                        do i=1,ni
-                            Block1%EQN_update_R_IV(i,j,:,ivar)=Block1%EQN_update_R_IV(i,j,:,ivar)+&
-                                (flux(i,j,1:nk,ivar)-flux(i,j,2:nk+1,ivar))/(Block1%dxk*Block1%xi_I(i)*sin(Block1%xj_I(j)))
-                        end do
-                    end do
+                do ivar=1,nvar_diffusion
+                    Block1%EQN_update_R_IV(:,:,:,ivar)=Block1%EQN_update_R_IV(:,:,:,ivar)+&
+                        (flux_z(:,:,1:nk,ivar)-flux_z(:,:,2:nk+1,ivar))/Block1%V_LLL
                 end do
             end select
-            deallocate(flux,phi,u_r_minus_u_l,u_i_plus_1_minus_u_i)
         end do
     end subroutine ModDiffusion_Artificial_1
 

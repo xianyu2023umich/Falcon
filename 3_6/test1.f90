@@ -21,6 +21,7 @@ program test1
     use ModInitiation,      only:   ModInitiation_DoAll
     use ModLogicalUnits,    only:   iUnit_param_file
     use ModStratification_new, only:   ModStratification_new_Init
+    use ModDiffusion,       only:   ModDiffusion_DoAll
     use MPI
 
     implicit none
@@ -47,6 +48,10 @@ program test1
         call ModStratification_new_Init
         if (MpiRank==0) print *, 'initialized stratification'
     end if
+
+    ! Allocate diffusion
+    call ModDiffusion_DoAll
+    if (MpiRank==0) print *, 'allocated diffusion'
 
     call test1_INITIATION(Tree)
     if (MpiRank==0) print *, 'initialized tree and state'
@@ -100,6 +105,7 @@ program test1
             if (if_param_file_opened) then
                 call ModReadParameters_read(param_file, iUnit_param_file)
                 call YinYangTree_UpdateAll(Tree,1)
+                call ModDiffusion_DoAll
             end if
             
             ! If we have read parameters successfully, then it means we have more steps to do. 

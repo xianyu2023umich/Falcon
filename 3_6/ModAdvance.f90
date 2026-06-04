@@ -103,7 +103,8 @@ module ModAdvance
 
                ! Preparations
                Block1%EQN_update_R_IV=0.0
-               Block1%primitive=>Block1%primitive_IV
+
+               ! Call diffusion.
                call ModDiffusion_Artificial_1(Block1,2)
                Block1%primitive_IV(1:ni,1:nj,1:nk,:)=&
                    Block1%primitive_IV(1:ni,1:nj,1:nk,:)+0.5*dt_global*Block1%EQN_update_R_IV
