@@ -180,7 +180,7 @@ module ModSaveLog
                 !    =gamma3*rho0*T0*s1 + p0/rho0*rho1
                 !
                 ! Here gamma3*rho0*T0*s1 defines L1, 
-                ! and rho0/p0*rho1 defines L2.
+                ! and p0/rho0*rho1 defines L2.
                 case ('Le1')
                     ! get position index of this r in xi_I
                     ir_pos_int=floor((r-Block1%xi_I(1))/Block1%dxi)+1
@@ -236,7 +236,7 @@ module ModSaveLog
                                 Block1%primitive_IV(ir_pos_int+1,j,k,:)*weight
 
                             ! enthalpy2 = p0/rho0*rho1
-                            enthalpy2 = p0/rho0*primitive_I(Block1%rho_)
+                            enthalpy2 = p0/rho0*primitive_I(Block1%rho1_)
 
                             ! Get the area of this piece at r.
                             dS = r ** 2 * (cos(Block1%xj_F(j))-cos(Block1%xj_F(j+1)))*&
