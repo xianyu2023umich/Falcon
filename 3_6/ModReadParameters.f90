@@ -291,7 +291,7 @@ module ModReadParameters
         case('default','Default','DEFAULT')
             ! Set the logtype to be a standard one.
 
-            nLogs=7
+            nLogs=9
             allocate(Logs(nLogs))
             Logs(1)%VarName='Le1'
             Logs(2)%VarName='Le2'
@@ -299,7 +299,9 @@ module ModReadParameters
             Logs(4)%VarName='Lr'
             Logs(5)%VarName='Ls'
             Logs(6)%VarName='s1'
-            Logs(7)%VarName='vrms'
+            Logs(7)%VarName='rho1'
+            Logs(8)%VarName='vrms'
+            Logs(9)%VarName='vrrms'
             do iLog=1,nLogs
                 Logs(iLog)%logical_unit=iUnit_log_base+iLog
                 Logs(iLog)%charType='layer'
