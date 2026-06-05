@@ -176,8 +176,8 @@ module ModSaveLog
                 ! ent=rho0 * e1 + p1 - p0 * rho1/rho0
                 !    =rho0*T0*s1 + p0 * rho1/rho0 + p1 - p0 * rho1/rho0
                 !    =rho0*T0*s1 + p1
-                !    =rho0*T0*s1 + rho0/p0*rho1 + (gamma3-1)*rho0*T0*s1
-                !    =gamma3*rho0*T0*s1 + rho0/p0*rho1
+                !    =rho0*T0*s1 + p0/rho0*rho1 + (gamma3-1)*rho0*T0*s1
+                !    =gamma3*rho0*T0*s1 + p0/rho0*rho1
                 !
                 ! Here gamma3*rho0*T0*s1 defines L1, 
                 ! and rho0/p0*rho1 defines L2.
@@ -235,8 +235,8 @@ module ModSaveLog
                                 Block1%primitive_IV(ir_pos_int,  j,k,:)*(1.0d0-weight)+&
                                 Block1%primitive_IV(ir_pos_int+1,j,k,:)*weight
 
-                            ! enthalpy2 = rho0/p0*rho1
-                            enthalpy2 = rho0/p0*primitive_I(Block1%rho_)
+                            ! enthalpy2 = p0/rho0*rho1
+                            enthalpy2 = p0/rho0*primitive_I(Block1%rho_)
 
                             ! Get the area of this piece at r.
                             dS = r ** 2 * (cos(Block1%xj_F(j))-cos(Block1%xj_F(j+1)))*&
